@@ -35,6 +35,7 @@
     <springdoc-openapi.version>2.8.17</springdoc-openapi.version>
     <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
+    <mapstruct.version>1.6.3</mapstruct.version>
 
     <!-- Gate de cobertura (CLAUDE.md secao 7 / 9): 80% em domain + application.
          Sem classes nesses pacotes ainda (Fase 0) o check nao acusa violacao;
@@ -48,6 +49,16 @@
         <groupId>org.springdoc</groupId>
         <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         <version>${springdoc-openapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct</artifactId>
+        <version>${mapstruct.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct-processor</artifactId>
+        <version>${mapstruct.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
