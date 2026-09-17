@@ -4,6 +4,16 @@ server:
 spring:
   application:
     name: produto-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/produto_db}
+    username: ${SPRING_DATASOURCE_USERNAME:rpe}
+    password: ${SPRING_DATASOURCE_PASSWORD:rpe}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
 
 management:
   endpoints:

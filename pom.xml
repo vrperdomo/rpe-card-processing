@@ -54,6 +54,21 @@
 
   <build>
     <plugins>
+      <!-- Testes *IT (Testcontainers/@SpringBootTest) rodam na fase integration-test/verify,
+           separados dos testes unitarios (*Test) que o Surefire ja cobre em `test`. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
       <!-- ./mvnw spotless:check | spotless:apply (rodado manualmente antes de cada commit) -->
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
