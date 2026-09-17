@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rpe} -d ${POSTGRES_DB:-rpe}"]
       interval: 5s
@@ -49,6 +50,10 @@ services:
       args:
         SERVICE_MODULE: produto-service
         SERVICE_PORT: 8081
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/produto_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rpe}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rpe}
     ports:
       - "${PRODUTO_SERVICE_PORT:-8081}:8081"
     depends_on:
