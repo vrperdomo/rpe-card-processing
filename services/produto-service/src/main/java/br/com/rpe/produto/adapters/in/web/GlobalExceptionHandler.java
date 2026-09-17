@@ -1,15 +1,11 @@
 package br.com.rpe.produto.adapters.in.web;
 
 import br.com.rpe.produto.adapters.in.web.dto.ErroCampoResponse;
-import br.com.rpe.produto.config.CorrelationIdFilter;
 import br.com.rpe.produto.domain.exception.ConflitoException;
 import br.com.rpe.produto.domain.exception.DependenciaIndisponivelException;
 import br.com.rpe.produto.domain.exception.RecursoNaoEncontradoException;
 import br.com.rpe.produto.domain.exception.RegraNegocioException;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
-import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,23 +22,25 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-  private final Clock clock;
+  private final ProblemDetailFactory problemDetailFactory;
 
-  public GlobalExceptionHandler(Clock clock) {
-    this.clock = clock;
+  public GlobalExceptionHandler(ProblemDetailFactory problemDetailFactory) {
+    this.problemDetailFactory = problemDetailFactory;
   }
 
   @ExceptionHandler(RecursoNaoEncontradoException.class)
   public ResponseEntity<ProblemDetail> tratarRecursoNaoEncontrado(
       RecursoNaoEncontradoException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(problema(HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.getMessage()));
+        .body(
+            problemDetailFactory.criar(
+                HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.getMessage()));
   }
 
   @ExceptionHandler(ConflitoException.class)
   public ResponseEntity<ProblemDetail> tratarConflito(ConflitoException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(problema(HttpStatus.CONFLICT, "Conflito", ex.getMessage()));
+        .body(problemDetailFactory.criar(HttpStatus.CONFLICT, "Conflito", ex.getMessage()));
   }
 
   /**
@@ -55,7 +53,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       DataIntegrityViolationException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
-            problema(
+            problemDetailFactory.criar(
                 HttpStatus.CONFLICT,
                 "Conflito",
                 "O recurso já existe ou viola uma restrição de unicidade"));
@@ -66,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       ObjectOptimisticLockingFailureException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
-            problema(
+            problemDetailFactory.criar(
                 HttpStatus.CONFLICT,
                 "Conflito",
                 "O recurso foi modificado por outra requisição; tente novamente"));
@@ -76,14 +74,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<ProblemDetail> tratarRegraNegocio(RegraNegocioException ex) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
         .body(
-            problema(HttpStatus.UNPROCESSABLE_ENTITY, "Regra de negócio violada", ex.getMessage()));
+            problemDetailFactory.criar(
+                HttpStatus.UNPROCESSABLE_ENTITY, "Regra de negócio violada", ex.getMessage()));
   }
 
   @ExceptionHandler(DependenciaIndisponivelException.class)
   public ResponseEntity<ProblemDetail> tratarDependenciaIndisponivel(
       DependenciaIndisponivelException ex) {
     ProblemDetail problem =
-        problema(HttpStatus.SERVICE_UNAVAILABLE, "Dependência indisponível", ex.getMessage());
+        problemDetailFactory.criar(
+            HttpStatus.SERVICE_UNAVAILABLE, "Dependência indisponível", ex.getMessage());
     return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
         .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfter().toSeconds()))
         .body(problem);
@@ -100,16 +100,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             .map(erro -> new ErroCampoResponse(erro.getField(), erro.getDefaultMessage()))
             .toList();
     ProblemDetail problem =
-        problema(HttpStatus.BAD_REQUEST, "Payload inválido", "Um ou mais campos são inválidos");
+        problemDetailFactory.criar(
+            HttpStatus.BAD_REQUEST, "Payload inválido", "Um ou mais campos são inválidos");
     problem.setProperty("errors", erros);
     return ResponseEntity.badRequest().body(problem);
-  }
-
-  private ProblemDetail problema(HttpStatus status, String titulo, String detalhe) {
-    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detalhe);
-    problem.setTitle(titulo);
-    problem.setProperty("correlationId", MDC.get(CorrelationIdFilter.MDC_KEY));
-    problem.setProperty("timestamp", Instant.now(clock));
-    return problem;
   }
 }

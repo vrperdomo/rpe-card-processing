@@ -3,6 +3,7 @@ package br.com.rpe.produto.adapters.in.web;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,11 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.rpe.produto.adapters.in.web.mapper.ProdutoWebMapperImpl;
+import br.com.rpe.produto.adapters.in.web.security.JwtAccessDeniedHandler;
+import br.com.rpe.produto.adapters.in.web.security.JwtAuthEntryPoint;
 import br.com.rpe.produto.application.usecase.AlterarStatusProdutoUseCase;
 import br.com.rpe.produto.application.usecase.BuscarProdutoUseCase;
 import br.com.rpe.produto.application.usecase.CriarProdutoUseCase;
 import br.com.rpe.produto.application.usecase.ListarProdutosUseCase;
 import br.com.rpe.produto.config.ClockConfig;
+import br.com.rpe.produto.config.SecurityConfig;
 import br.com.rpe.produto.domain.CategoriaProduto;
 import br.com.rpe.produto.domain.Produto;
 import br.com.rpe.produto.domain.StatusProduto;
@@ -39,7 +43,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ProdutoController.class)
-@Import({ProdutoWebMapperImpl.class, ClockConfig.class})
+@Import({
+  ProdutoWebMapperImpl.class,
+  ClockConfig.class,
+  SecurityConfig.class,
+  ProblemDetailFactory.class,
+  JwtAuthEntryPoint.class,
+  JwtAccessDeniedHandler.class
+})
 class ProdutoControllerTest {
 
   private static final Instant AGORA = Instant.parse("2026-09-17T12:00:00Z");
@@ -60,6 +71,7 @@ class ProdutoControllerTest {
     mockMvc
         .perform(
             post("/api/v1/produtos")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -71,10 +83,19 @@ class ProdutoControllerTest {
   }
 
   @Test
+  void deveRetornar401QuandoSemToken() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/produtos/{id}", UUID.randomUUID()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.title").value("Não autenticado"));
+  }
+
+  @Test
   void deveRetornar400QuandoNomeEmBranco() throws Exception {
     mockMvc
         .perform(
             post("/api/v1/produtos")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -92,6 +113,7 @@ class ProdutoControllerTest {
     mockMvc
         .perform(
             post("/api/v1/produtos")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -108,6 +130,7 @@ class ProdutoControllerTest {
     mockMvc
         .perform(
             post("/api/v1/produtos")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -125,6 +148,7 @@ class ProdutoControllerTest {
     mockMvc
         .perform(
             patch("/api/v1/produtos/{id}/status", id)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -139,7 +163,7 @@ class ProdutoControllerTest {
     when(buscarProdutoUseCase.executar(produto.getId())).thenReturn(produto);
 
     mockMvc
-        .perform(get("/api/v1/produtos/{id}", produto.getId()))
+        .perform(get("/api/v1/produtos/{id}", produto.getId()).with(jwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(produto.getId().toString()));
   }
@@ -151,7 +175,7 @@ class ProdutoControllerTest {
         .thenThrow(new RecursoNaoEncontradoException("Produto não encontrado"));
 
     mockMvc
-        .perform(get("/api/v1/produtos/{id}", id))
+        .perform(get("/api/v1/produtos/{id}", id).with(jwt()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.title").value("Recurso não encontrado"));
   }
@@ -163,7 +187,7 @@ class ProdutoControllerTest {
     when(listarProdutosUseCase.executar(eq(StatusProduto.ATIVO), any())).thenReturn(pagina);
 
     mockMvc
-        .perform(get("/api/v1/produtos").param("status", "ATIVO"))
+        .perform(get("/api/v1/produtos").with(jwt()).param("status", "ATIVO"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.conteudo[0].nome").value("Gold"))
         .andExpect(jsonPath("$.totalElementos").value(1));
@@ -179,6 +203,7 @@ class ProdutoControllerTest {
     mockMvc
         .perform(
             patch("/api/v1/produtos/{id}/status", produto.getId())
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -197,6 +222,7 @@ class ProdutoControllerTest {
     mockMvc
         .perform(
             patch("/api/v1/produtos/{id}/status", id)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
