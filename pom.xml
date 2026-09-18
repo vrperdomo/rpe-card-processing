@@ -36,6 +36,8 @@
     <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
     <mapstruct.version>1.6.3</mapstruct.version>
+    <resilience4j.version>2.4.0</resilience4j.version>
+    <wiremock.version>3.13.2</wiremock.version>
 
     <!-- Gate de cobertura (CLAUDE.md secao 7 / 9): 80% em domain + application.
          Sem classes nesses pacotes ainda (Fase 0) o check nao acusa violacao;
@@ -59,6 +61,16 @@
         <groupId>org.mapstruct</groupId>
         <artifactId>mapstruct-processor</artifactId>
         <version>${mapstruct.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.resilience4j</groupId>
+        <artifactId>resilience4j-spring-boot3</artifactId>
+        <version>${resilience4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.wiremock</groupId>
+        <artifactId>wiremock-standalone</artifactId>
+        <version>${wiremock.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

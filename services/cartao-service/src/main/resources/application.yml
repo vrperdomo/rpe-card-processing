@@ -21,3 +21,44 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+rpe:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-insecure-secret-troque-em-producao-32chars}
+    issuer: ${JWT_ISSUER:https://portador-service.rpe.local}
+    audience: ${JWT_AUDIENCE:rpe-api}
+  cartao:
+    produto-client:
+      base-url: ${PRODUTO_SERVICE_URL:http://localhost:8081}
+      connect-timeout: 2s
+      read-timeout: 3s
+
+resilience4j:
+  retry:
+    instances:
+      produto:
+        max-attempts: 3
+        wait-duration: 200ms
+        exponential-backoff-multiplier: 2
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+  circuitbreaker:
+    instances:
+      produto:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+  timelimiter:
+    instances:
+      produto:
+        timeout-duration: 3s
+        cancel-running-future: true
