@@ -8,6 +8,15 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:us-east-1}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      sqs:
+        endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
 
 management:
   endpoints:
@@ -39,6 +48,10 @@ rpe:
     produto-cache:
       ttl: 10m
       ttl-negativo: 60s
+    mensageria:
+      produto-eventos-queue: produto-eventos-queue
+      produto-eventos-dlq: produto-eventos-dlq
+      listener-auto-startup: true
 
 resilience4j:
   retry:
