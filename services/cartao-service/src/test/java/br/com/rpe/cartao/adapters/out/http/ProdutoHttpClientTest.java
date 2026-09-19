@@ -29,7 +29,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+// Auto-startup do listener SQS desligado: este teste sobe só WireMock, não LocalStack.
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    properties = "rpe.cartao.mensageria.listener-auto-startup=false")
 class ProdutoHttpClientTest {
 
   @RegisterExtension

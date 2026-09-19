@@ -34,7 +34,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+// Auto-startup do listener SQS desligado: este teste sobe só Redis, não LocalStack.
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    properties = "rpe.cartao.mensageria.listener-auto-startup=false")
 @Testcontainers
 class ProdutoCacheAsideClientTest {
 
@@ -151,5 +154,53 @@ class ProdutoCacheAsideClientTest {
 
     Long ttl = redisTemplate.getExpire(chave(id), TimeUnit.SECONDS);
     assertThat(ttl).isPositive().isLessThanOrEqualTo(60L);
+  }
+
+  @Test
+  void deveRemoverChaveDoCacheAoEvictar() {
+    UUID id = UUID.randomUUID();
+    ProdutoDto dto = new ProdutoDto(id, "Gold", "GOLD", "453201", StatusProdutoExterno.ATIVO);
+    when(delegate.buscarPorId(id)).thenReturn(Optional.of(dto));
+    cacheAsideClient.buscarPorId(id);
+    assertThat(redisTemplate.hasKey(chave(id))).isTrue();
+
+    cacheAsideClient.evict(id);
+
+    assertThat(redisTemplate.hasKey(chave(id))).isFalse();
+  }
+
+  @Test
+  void naoDeveFalharAoEvictarChaveInexistente() {
+    UUID id = UUID.randomUUID();
+
+    org.assertj.core.api.Assertions.assertThatCode(() -> cacheAsideClient.evict(id))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void deveSeguirSemErroAoEvictarComRedisIndisponivel() {
+    UUID id = UUID.randomUUID();
+    LettuceClientConfiguration clientConfig =
+        LettuceClientConfiguration.builder().commandTimeout(Duration.ofMillis(300)).build();
+    LettuceConnectionFactory conexaoQuebrada =
+        new LettuceConnectionFactory(
+            new RedisStandaloneConfiguration("localhost", 1), clientConfig);
+    conexaoQuebrada.afterPropertiesSet();
+    RedisTemplate<String, ProdutoCacheEntry> templateQuebrado = new RedisTemplate<>();
+    templateQuebrado.setConnectionFactory(conexaoQuebrada);
+    templateQuebrado.setKeySerializer(new StringRedisSerializer());
+    templateQuebrado.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+    templateQuebrado.afterPropertiesSet();
+
+    ProdutoCacheAsideClient clienteIsolado =
+        new ProdutoCacheAsideClient(
+            mock(ProdutoHttpClient.class),
+            templateQuebrado,
+            new ProdutoCacheProperties(Duration.ofMinutes(10), Duration.ofSeconds(60)),
+            new SimpleMeterRegistry());
+
+    org.assertj.core.api.Assertions.assertThatCode(() -> clienteIsolado.evict(id))
+        .doesNotThrowAnyException();
+    conexaoQuebrada.destroy();
   }
 }

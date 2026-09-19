@@ -1,6 +1,7 @@
 package br.com.rpe.cartao.adapters.out.cache;
 
 import br.com.rpe.cartao.adapters.out.http.ProdutoHttpClient;
+import br.com.rpe.cartao.application.port.out.ProdutoCacheEvictor;
 import br.com.rpe.cartao.application.port.out.ProdutoClient;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
 import br.com.rpe.cartao.config.ProdutoCacheProperties;
@@ -14,7 +15,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ProdutoCacheAsideClient implements ProdutoClient {
+public class ProdutoCacheAsideClient implements ProdutoClient, ProdutoCacheEvictor {
 
   private static final Logger log = LoggerFactory.getLogger(ProdutoCacheAsideClient.class);
   private static final String PREFIXO_CHAVE = "produto:v1:";
@@ -57,6 +58,17 @@ public class ProdutoCacheAsideClient implements ProdutoClient {
     } catch (DataAccessException ex) {
       log.warn("Redis indisponível ao ler cache de produto, seguindo sem cache", ex);
       return Optional.empty();
+    }
+  }
+
+  @Override
+  public void evict(UUID produtoId) {
+    String chave = PREFIXO_CHAVE + produtoId;
+    try {
+      redisTemplate.delete(chave);
+    } catch (DataAccessException ex) {
+      log.warn(
+          "Redis indisponível ao evictar cache de produto {}, TTL cobre a janela", produtoId, ex);
     }
   }
 
