@@ -77,6 +77,10 @@ services:
       args:
         SERVICE_MODULE: portador-service
         SERVICE_PORT: 8082
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
     ports:
       - "${PORTADOR_SERVICE_PORT:-8082}:8082"
     depends_on:

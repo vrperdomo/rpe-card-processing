@@ -21,3 +21,14 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+rpe:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-insecure-secret-troque-em-producao-32chars}
+    issuer: ${JWT_ISSUER:https://portador-service.rpe.local}
+    audience: ${JWT_AUDIENCE:rpe-api}
+    expiracao: ${JWT_EXPIRACAO:30m}
+  auth:
+    usuario-seed:
+      username: ${AUTH_SEED_USERNAME:admin}
+      password-hash: ${AUTH_SEED_PASSWORD_HASH:$2a$10$chtDohAzn/dxRYXDaaB.WOtw.kMjhnDhJHTbydDqYf31/27PTX7cq}
