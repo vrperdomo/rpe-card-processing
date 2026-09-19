@@ -1,0 +1,19 @@
+title = "gitleaks config - RPE Card Processing"
+
+# Estende a config padrao do gitleaks (todas as regras continuam ativas) e adiciona apenas uma
+# allowlist para os segredos de teste fixos usados para assinar/validar JWT nos testes unitarios
+# (SecurityConfigTest, JwtGeradorTokenTest, AuthControllerTest, etc. de todos os servicos).
+#
+# Motivo de existir: o .gitleaksignore padrao do gitleaks aponta findings por SHA de commit, mas
+# este repositorio usa squash merge (CLAUDE.md secao 4) - toda entrada na develop nasce com um
+# commit novo, invalidando o fingerprint e quebrando o CI de novo a cada merge. Uma allowlist por
+# valor (nao por commit) resolve na raiz, sem depender do SHA final do merge.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Segredos de teste fixos e documentados (JWT HS256), nunca usados fora de testes unitarios"
+regexes = [
+  '''segredo-de-teste-com-pelo-menos-32-caracteres''',
+  '''outro-segredo-completamente-diferente-32chars''',
+]
