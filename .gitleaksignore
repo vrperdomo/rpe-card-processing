@@ -1,3 +1,8 @@
 06d373cd1ed787ffab4a9b20123b6d722e6e6ff8:services/produto-service/src/test/java/br/com/rpe/produto/config/SecurityConfigTest.java:generic-api-key:48
 06d373cd1ed787ffab4a9b20123b6d722e6e6ff8:services/produto-service/src/test/java/br/com/rpe/produto/config/SecurityConfigTest.java:generic-api-key:54
 06d373cd1ed787ffab4a9b20123b6d722e6e6ff8:services/produto-service/src/test/java/br/com/rpe/produto/config/SecurityConfigTest.java:generic-api-key:55
+353b27fc2663a1f414b41f5f4a71e1a5a570661c:services/portador-service/src/test/java/br/com/rpe/portador/adapters/out/security/JwtGeradorTokenTest.java:generic-api-key:22
+353b27fc2663a1f414b41f5f4a71e1a5a570661c:services/portador-service/src/test/java/br/com/rpe/portador/adapters/in/web/AuthControllerTest.java:generic-api-key:36
+353b27fc2663a1f414b41f5f4a71e1a5a570661c:services/portador-service/src/test/java/br/com/rpe/portador/config/SecurityConfigTest.java:generic-api-key:44
+353b27fc2663a1f414b41f5f4a71e1a5a570661c:services/portador-service/src/test/java/br/com/rpe/portador/config/SecurityConfigTest.java:generic-api-key:53
+353b27fc2663a1f414b41f5f4a71e1a5a570661c:services/portador-service/src/test/java/br/com/rpe/portador/config/SecurityConfigTest.java:generic-api-key:54
