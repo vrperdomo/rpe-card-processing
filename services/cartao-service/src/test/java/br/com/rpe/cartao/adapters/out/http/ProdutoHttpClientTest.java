@@ -10,7 +10,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.rpe.cartao.application.port.out.ProdutoClient;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
 import br.com.rpe.cartao.application.port.out.StatusProdutoExterno;
 import br.com.rpe.cartao.domain.exception.DependenciaIndisponivelException;
@@ -37,7 +36,7 @@ class ProdutoHttpClientTest {
   static WireMockExtension wireMock =
       WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
-  @Autowired private ProdutoClient produtoClient;
+  @Autowired private ProdutoHttpClient produtoClient;
   @Autowired private CircuitBreakerRegistry circuitBreakerRegistry;
 
   @DynamicPropertySource

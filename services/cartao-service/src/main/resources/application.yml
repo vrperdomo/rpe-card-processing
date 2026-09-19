@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: cartao-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 management:
   endpoints:
@@ -32,6 +36,9 @@ rpe:
       base-url: ${PRODUTO_SERVICE_URL:http://localhost:8081}
       connect-timeout: 2s
       read-timeout: 3s
+    produto-cache:
+      ttl: 10m
+      ttl-negativo: 60s
 
 resilience4j:
   retry:
