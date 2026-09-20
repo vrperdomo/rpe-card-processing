@@ -111,4 +111,21 @@ public class OutboxEventEntity {
   public Instant getPublicadoEm() {
     return publicadoEm;
   }
+
+  public void marcarPublicado(Instant publicadoEm) {
+    this.status = StatusOutboxEvent.PUBLICADO;
+    this.publicadoEm = publicadoEm;
+  }
+
+  public void registrarFalhaTemporaria(Instant proximaTentativaEm, String erro) {
+    this.tentativas++;
+    this.proximaTentativaEm = proximaTentativaEm;
+    this.ultimoErro = erro;
+  }
+
+  public void marcarFalhaDefinitiva(String erro) {
+    this.tentativas++;
+    this.status = StatusOutboxEvent.FALHOU;
+    this.ultimoErro = erro;
+  }
 }

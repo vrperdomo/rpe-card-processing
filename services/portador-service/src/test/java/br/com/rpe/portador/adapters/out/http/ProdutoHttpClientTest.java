@@ -32,7 +32,10 @@ import org.springframework.test.context.DynamicPropertySource;
 
 // Contexto completo (inclui os repositorios JPA via component scan), por isso precisa de Postgres
 // real via Testcontainers, mesmo o teste em si so exercitando o client HTTP contra o WireMock.
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+// Relay do outbox desligado pelo mesmo motivo do PortadorServiceApplicationTests.
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    properties = "rpe.portador.outbox.relay.ativo=false")
 class ProdutoHttpClientTest extends IntegrationTestBase {
 
   @RegisterExtension
