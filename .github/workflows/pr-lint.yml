@@ -42,6 +42,13 @@ jobs:
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
+          # Branches do Dependabot (dependabot/maven/..., dependabot/docker/...) sao geradas
+          # automaticamente pelo GitHub e nao seguem (nem podem seguir) o padrao <tipo>/<issue>-<slug>
+          # da CLAUDE.md secao 4 — nao ha issue nem slug para um bump de dependencia automatico.
+          if [[ "$BRANCH" =~ ^dependabot/ ]]; then
+            echo "Branch do Dependabot, isenta da validacao de nome: $BRANCH"
+            exit 0
+          fi
           if [[ ! "$BRANCH" =~ ^(feature|bugfix|docs|ci|chore)/[0-9]+-[a-z0-9-]+$ ]] && \
              [[ ! "$BRANCH" =~ ^(release|hotfix)/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Nome de branch invalido: $BRANCH"
