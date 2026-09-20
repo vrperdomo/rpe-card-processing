@@ -4,6 +4,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,13 +14,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.rpe.portador.adapters.in.web.mapper.PortadorWebMapperImpl;
 import br.com.rpe.portador.adapters.in.web.security.JwtAccessDeniedHandler;
 import br.com.rpe.portador.adapters.in.web.security.JwtAuthEntryPoint;
+import br.com.rpe.portador.application.usecase.AlterarStatusPortadorUseCase;
+import br.com.rpe.portador.application.usecase.BuscarPortadorUseCase;
 import br.com.rpe.portador.application.usecase.CadastrarPortadorUseCase;
 import br.com.rpe.portador.config.ClockConfig;
 import br.com.rpe.portador.config.SecurityConfig;
 import br.com.rpe.portador.domain.Cpf;
 import br.com.rpe.portador.domain.Portador;
+import br.com.rpe.portador.domain.StatusPortador;
 import br.com.rpe.portador.domain.exception.ConflitoException;
 import br.com.rpe.portador.domain.exception.DependenciaIndisponivelException;
+import br.com.rpe.portador.domain.exception.RecursoNaoEncontradoException;
 import br.com.rpe.portador.domain.exception.RegraNegocioException;
 import java.time.Duration;
 import java.time.Instant;
@@ -30,6 +36,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -62,6 +69,8 @@ class PortadorControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private CadastrarPortadorUseCase cadastrarPortadorUseCase;
+  @MockitoBean private BuscarPortadorUseCase buscarPortadorUseCase;
+  @MockitoBean private AlterarStatusPortadorUseCase alterarStatusPortadorUseCase;
 
   private String corpo(String cpf, String dataNascimento, String produtoId) {
     return """
@@ -187,5 +196,89 @@ class PortadorControllerTest {
                 .content(corpo(CPF_VALIDO, "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isServiceUnavailable())
         .andExpect(header().string("Retry-After", "10"));
+  }
+
+  @Test
+  void deveBuscarPortadorPorIdComCpfMascarado() throws Exception {
+    Portador portador =
+        Portador.cadastrar(
+            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+    when(buscarPortadorUseCase.executar(portador.getId())).thenReturn(portador);
+
+    mockMvc
+        .perform(get("/api/v1/portadores/{id}", portador.getId()).with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(portador.getId().toString()))
+        .andExpect(jsonPath("$.cpf").value("***.982.247-**"));
+  }
+
+  @Test
+  void deveRetornar404QuandoPortadorNaoEncontrado() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(buscarPortadorUseCase.executar(id))
+        .thenThrow(new RecursoNaoEncontradoException("Portador não encontrado"));
+
+    mockMvc
+        .perform(get("/api/v1/portadores/{id}", id).with(jwt()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.title").value("Recurso não encontrado"));
+  }
+
+  @Test
+  void deveAlterarStatusERetornarPortadorAtualizado() throws Exception {
+    Portador portador =
+        Portador.cadastrar(
+            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+    portador.bloquear(AGORA);
+    when(alterarStatusPortadorUseCase.executar(portador.getId(), StatusPortador.BLOQUEADO))
+        .thenReturn(portador);
+
+    mockMvc
+        .perform(
+            patch("/api/v1/portadores/{id}/status", portador.getId())
+                .with(jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"status":"BLOQUEADO"}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("BLOQUEADO"));
+  }
+
+  @Test
+  void deveRetornar422QuandoTransicaoDeStatusInvalida() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.ATIVO))
+        .thenThrow(new RegraNegocioException("Portador já está ativo"));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/portadores/{id}/status", id)
+                .with(jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"status":"ATIVO"}
+                    """))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
+  @Test
+  void deveRetornar409QuandoEscritaConcorrenteCausaOptimisticLock() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.CANCELADO))
+        .thenThrow(new ObjectOptimisticLockingFailureException(Portador.class, id));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/portadores/{id}/status", id)
+                .with(jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"status":"CANCELADO"}
+                    """))
+        .andExpect(status().isConflict());
   }
 }
