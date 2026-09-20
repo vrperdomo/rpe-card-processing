@@ -39,7 +39,7 @@
     <resilience4j.version>2.4.0</resilience4j.version>
     <wiremock.version>3.13.2</wiremock.version>
     <awaitility.version>4.3.0</awaitility.version>
-    <spring-cloud-aws.version>3.4.2</spring-cloud-aws.version>
+    <spring-cloud-aws.version>4.1.1</spring-cloud-aws.version>
 
     <!-- Gate de cobertura (CLAUDE.md secao 7 / 9): 80% em domain + application.
          Sem classes nesses pacotes ainda (Fase 0) o check nao acusa violacao;
