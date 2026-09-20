@@ -9,6 +9,7 @@ import br.com.rpe.produto.application.usecase.AlterarStatusProdutoUseCase;
 import br.com.rpe.produto.application.usecase.BuscarProdutoUseCase;
 import br.com.rpe.produto.application.usecase.CriarProdutoUseCase;
 import br.com.rpe.produto.application.usecase.ListarProdutosUseCase;
+import br.com.rpe.produto.config.CorrelationIdFilter;
 import br.com.rpe.produto.domain.Produto;
 import br.com.rpe.produto.domain.StatusProduto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -81,6 +83,8 @@ public class ProdutoController {
   @Operation(summary = "Altera o status de um produto (ATIVO → CANCELADO)")
   public ProdutoResponse alterarStatus(
       @PathVariable UUID id, @Valid @RequestBody AlterarStatusProdutoRequest request) {
-    return mapper.paraResponse(alterarStatusProdutoUseCase.executar(id, request.status()));
+    String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+    return mapper.paraResponse(
+        alterarStatusProdutoUseCase.executar(id, request.status(), correlationId));
   }
 }

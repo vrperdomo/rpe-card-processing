@@ -142,7 +142,7 @@ class ProdutoControllerTest {
   @Test
   void deveRetornar409QuandoEscritaConcorrenteCausaOptimisticLock() throws Exception {
     UUID id = UUID.randomUUID();
-    when(alterarStatusProdutoUseCase.executar(id, StatusProduto.CANCELADO))
+    when(alterarStatusProdutoUseCase.executar(eq(id), eq(StatusProduto.CANCELADO), any()))
         .thenThrow(new ObjectOptimisticLockingFailureException(Produto.class, id));
 
     mockMvc
@@ -197,7 +197,8 @@ class ProdutoControllerTest {
   void deveAlterarStatusParaCancelado() throws Exception {
     Produto produto = Produto.criar("Gold", "descricao", CategoriaProduto.GOLD, "123456", AGORA);
     produto.cancelar(AGORA.plusSeconds(60));
-    when(alterarStatusProdutoUseCase.executar(produto.getId(), StatusProduto.CANCELADO))
+    when(alterarStatusProdutoUseCase.executar(
+            eq(produto.getId()), eq(StatusProduto.CANCELADO), any()))
         .thenReturn(produto);
 
     mockMvc
@@ -216,7 +217,7 @@ class ProdutoControllerTest {
   @Test
   void deveRetornar422QuandoTransicaoDeStatusInvalida() throws Exception {
     UUID id = UUID.randomUUID();
-    when(alterarStatusProdutoUseCase.executar(id, StatusProduto.ATIVO))
+    when(alterarStatusProdutoUseCase.executar(eq(id), eq(StatusProduto.ATIVO), any()))
         .thenThrow(new RegraNegocioException("Transição não permitida"));
 
     mockMvc
