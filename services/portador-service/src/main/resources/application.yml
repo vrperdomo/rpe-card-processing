@@ -56,6 +56,10 @@ rpe:
       base-url: ${PRODUTO_SERVICE_URL:http://localhost:8081}
       connect-timeout: 2s
       read-timeout: 3s
+    cartao-client:
+      base-url: ${CARTAO_SERVICE_URL:http://localhost:8083}
+      connect-timeout: 2s
+      read-timeout: 3s
     outbox:
       relay:
         fila: cartao-emissao-queue
@@ -77,6 +81,15 @@ resilience4j:
         retry-exceptions:
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
+      cartao:
+        max-attempts: 3
+        wait-duration: 200ms
+        exponential-backoff-multiplier: 2
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
   circuitbreaker:
     instances:
       produto:
@@ -89,8 +102,21 @@ resilience4j:
         record-exceptions:
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
+      cartao:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
   timelimiter:
     instances:
       produto:
+        timeout-duration: 3s
+        cancel-running-future: true
+      cartao:
         timeout-duration: 3s
         cancel-running-future: true

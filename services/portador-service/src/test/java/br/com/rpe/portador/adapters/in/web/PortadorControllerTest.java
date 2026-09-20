@@ -11,12 +11,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.rpe.portador.adapters.in.web.mapper.PortadorCompletoWebMapper;
 import br.com.rpe.portador.adapters.in.web.mapper.PortadorWebMapperImpl;
 import br.com.rpe.portador.adapters.in.web.security.JwtAccessDeniedHandler;
 import br.com.rpe.portador.adapters.in.web.security.JwtAuthEntryPoint;
+import br.com.rpe.portador.application.port.out.CartaoDto;
+import br.com.rpe.portador.application.port.out.ProdutoDto;
+import br.com.rpe.portador.application.port.out.StatusCartaoExterno;
+import br.com.rpe.portador.application.port.out.StatusProdutoExterno;
 import br.com.rpe.portador.application.usecase.AlterarStatusPortadorUseCase;
+import br.com.rpe.portador.application.usecase.BuscarPortadorCompletoUseCase;
 import br.com.rpe.portador.application.usecase.BuscarPortadorUseCase;
 import br.com.rpe.portador.application.usecase.CadastrarPortadorUseCase;
+import br.com.rpe.portador.application.usecase.PortadorCompleto;
+import br.com.rpe.portador.application.usecase.PortadorCompleto.StatusEmissao;
 import br.com.rpe.portador.config.ClockConfig;
 import br.com.rpe.portador.config.SecurityConfig;
 import br.com.rpe.portador.domain.Cpf;
@@ -29,6 +37,8 @@ import br.com.rpe.portador.domain.exception.RegraNegocioException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +54,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(PortadorController.class)
 @Import({
   PortadorWebMapperImpl.class,
+  PortadorCompletoWebMapper.class,
   ClockConfig.class,
   SecurityConfig.class,
   ProblemDetailFactory.class,
@@ -70,6 +81,7 @@ class PortadorControllerTest {
 
   @MockitoBean private CadastrarPortadorUseCase cadastrarPortadorUseCase;
   @MockitoBean private BuscarPortadorUseCase buscarPortadorUseCase;
+  @MockitoBean private BuscarPortadorCompletoUseCase buscarPortadorCompletoUseCase;
   @MockitoBean private AlterarStatusPortadorUseCase alterarStatusPortadorUseCase;
 
   private String corpo(String cpf, String dataNascimento, String produtoId) {
@@ -280,5 +292,66 @@ class PortadorControllerTest {
                     {"status":"CANCELADO"}
                     """))
         .andExpect(status().isConflict());
+  }
+
+  @Test
+  void deveBuscarCompletoComCartaoEProduto() throws Exception {
+    Portador portador =
+        Portador.cadastrar(
+            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+    CartaoDto cartao =
+        new CartaoDto(UUID.randomUUID(), "**** **** **** 1234", "09/31", StatusCartaoExterno.ATIVO);
+    ProdutoDto produto = new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.ATIVO);
+    when(buscarPortadorCompletoUseCase.executar(portador.getId()))
+        .thenReturn(
+            new PortadorCompleto(
+                portador,
+                Optional.of(cartao),
+                Optional.of(produto),
+                StatusEmissao.CONCLUIDA,
+                List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.portador.cpf").value("***.982.247-**"))
+        .andExpect(jsonPath("$.cartao.panMascarado").value("**** **** **** 1234"))
+        .andExpect(jsonPath("$.produto.nome").value("Gold"))
+        .andExpect(jsonPath("$.emissao").value("CONCLUIDA"))
+        .andExpect(jsonPath("$.avisos").isEmpty());
+  }
+
+  @Test
+  void deveRetornarDegradadoComAvisoQuandoCartaoIndisponivel() throws Exception {
+    Portador portador =
+        Portador.cadastrar(
+            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+    ProdutoDto produto = new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.ATIVO);
+    when(buscarPortadorCompletoUseCase.executar(portador.getId()))
+        .thenReturn(
+            new PortadorCompleto(
+                portador,
+                Optional.empty(),
+                Optional.of(produto),
+                StatusEmissao.DESCONHECIDA,
+                List.of("Cartão indisponível no momento")));
+
+    mockMvc
+        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cartao").doesNotExist())
+        .andExpect(jsonPath("$.emissao").value("DESCONHECIDA"))
+        .andExpect(jsonPath("$.avisos[0]").value("Cartão indisponível no momento"));
+  }
+
+  @Test
+  void deveRetornar404NaConsultaCompletaQuandoPortadorNaoEncontrado() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(buscarPortadorCompletoUseCase.executar(id))
+        .thenThrow(new RecursoNaoEncontradoException("Portador não encontrado"));
+
+    mockMvc
+        .perform(get("/api/v1/portadores/{id}/completo", id).with(jwt()))
+        .andExpect(status().isNotFound());
   }
 }

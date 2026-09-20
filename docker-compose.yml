@@ -88,6 +88,7 @@ services:
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
       PRODUTO_SERVICE_URL: http://produto-service:8081
+      CARTAO_SERVICE_URL: http://cartao-service:8083
       AWS_SQS_ENDPOINT: http://localstack:4566
     ports:
       - "${PORTADOR_SERVICE_PORT:-8082}:8082"
@@ -95,6 +96,8 @@ services:
       postgres:
         condition: service_healthy
       produto-service:
+        condition: service_healthy
+      cartao-service:
         condition: service_healthy
       localstack:
         condition: service_healthy

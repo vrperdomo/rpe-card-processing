@@ -81,7 +81,8 @@ class ProdutoHttpClientTest extends IntegrationTestBase {
 
     Optional<ProdutoDto> resultado = produtoClient.buscarPorId(produtoId);
 
-    assertThat(resultado).contains(new ProdutoDto(produtoId, StatusProdutoExterno.ATIVO));
+    assertThat(resultado)
+        .contains(new ProdutoDto(produtoId, null, null, StatusProdutoExterno.ATIVO));
     wireMock.verify(
         getRequestedFor(urlEqualTo(caminho(produtoId)))
             .withHeader("Authorization", matching("Bearer .+")));

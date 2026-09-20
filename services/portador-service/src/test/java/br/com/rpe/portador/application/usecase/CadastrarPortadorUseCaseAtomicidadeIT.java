@@ -54,7 +54,8 @@ class CadastrarPortadorUseCaseAtomicidadeIT extends IntegrationTestBase {
   @Test
   void naoDevePersistirPortadorQuandoEscritaDoOutboxFalha() {
     when(produtoClient.buscarPorId(PRODUTO_ID))
-        .thenReturn(Optional.of(new ProdutoDto(PRODUTO_ID, StatusProdutoExterno.ATIVO)));
+        .thenReturn(
+            Optional.of(new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.ATIVO)));
     doThrow(new IllegalStateException("falha simulada ao gravar outbox"))
         .when(outboxRepositorio)
         .registrar(any(), any(), any());
