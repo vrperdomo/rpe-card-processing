@@ -1,0 +1,337 @@
+{
+  "info": {
+    "_postman_id": "8f0a6f6e-6a3e-4b2a-9b1d-2f6c1a7e3d10",
+    "name": "RPE Card Processing Platform",
+    "description": "Coleção dos 3 microserviços (Produto, Portador, Cartão) do desafio RPE. Rode a pasta \"Fluxo de emissão de cartão\" em ordem: cada requisição salva o id/token necessário para a próxima na environment (accessToken, produtoId, portadorId, cartaoId). Use a environment \"RPE Local\" (docs/postman/RPE-Local.postman_environment.json) com a stack no ar (`docker compose up -d --build --wait`).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Fluxo de emissão de cartão",
+      "description": "Ordem sugerida: Login → Criar Produto → Cadastrar Portador → Buscar Portador Completo (repita até emissao=CONCLUIDA, é assíncrono).",
+      "item": [
+        {
+          "name": "1. Login",
+          "auth": { "type": "noauth" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login retorna 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('accessToken presente', () => pm.expect(json.accessToken).to.be.a('string'));",
+                  "  pm.environment.set('accessToken', json.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrlPortador}}/api/v1/auth/login",
+              "host": ["{{baseUrlPortador}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Usuário seed, ambiente local apenas (ADR-004). Resposta traz accessToken (Bearer), salvo automaticamente na environment."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Criar Produto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Produto criado (201)', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.environment.set('produtoId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Gold Postman {{$timestamp}}\",\n  \"descricao\": \"Produto de teste via Postman\",\n  \"categoria\": \"GOLD\",\n  \"bin\": \"453201\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrlProduto}}/api/v1/produtos",
+              "host": ["{{baseUrlProduto}}"],
+              "path": ["api", "v1", "produtos"]
+            },
+            "description": "categoria: BLACK | GOLD | PLATINUM. bin: exatamente 6 dígitos. Id da resposta salvo em {{produtoId}}."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Cadastrar Portador",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Gera um CPF com digitos verificadores validos (modulo 11) a cada execucao,",
+                  "// para a collection poder ser rodada repetidamente sem colidir com a UNIQUE(cpf).",
+                  "function calcularDigito(digitos, pesoInicial) {",
+                  "  let soma = 0, peso = pesoInicial;",
+                  "  for (const d of digitos) { soma += d * peso; peso--; }",
+                  "  const resto = soma % 11;",
+                  "  return resto < 2 ? 0 : 11 - resto;",
+                  "}",
+                  "function gerarCpf() {",
+                  "  const base = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));",
+                  "  const d1 = calcularDigito(base, 10);",
+                  "  const d2 = calcularDigito([...base, d1], 11);",
+                  "  return [...base, d1, d2].join('');",
+                  "}",
+                  "pm.variables.set('cpfGerado', gerarCpf());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Portador cadastrado (201)', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.environment.set('portadorId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Victor Rodrigues\",\n  \"cpf\": \"{{cpfGerado}}\",\n  \"dataNascimento\": \"1990-01-01\",\n  \"produtoId\": \"{{produtoId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrlPortador}}/api/v1/portadores",
+              "host": ["{{baseUrlPortador}}"],
+              "path": ["api", "v1", "portadores"]
+            },
+            "description": "Fail-fast: 422 se o produto não existir ou não estiver ATIVO. Exige ≥ 18 anos (validação @Past + regra de domínio). Dispara a emissão assíncrona do cartão (Outbox + SQS)."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Buscar Portador Completo (repita até CONCLUIDA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Consulta agregada retorna 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "console.log('emissao:', json.emissao, '- rode de novo se ainda estiver PENDENTE');",
+                  "if (json.cartao && json.cartao.id) { pm.environment.set('cartaoId', json.cartao.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlPortador}}/api/v1/portadores/{{portadorId}}/completo",
+              "host": ["{{baseUrlPortador}}"],
+              "path": ["api", "v1", "portadores", "{{portadorId}}", "completo"]
+            },
+            "description": "Agrega Portador + Cartão + Produto. `emissao`: PENDENTE (ainda processando) | CONCLUIDA | DESCONHECIDA (dependência indisponível). Resposta sempre 200, nunca inventa dado (avisos[] sinaliza degradação). Assíncrono: pode ser necessário reenviar esta requisição algumas vezes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Produto",
+      "item": [
+        {
+          "name": "Buscar Produto por Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlProduto}}/api/v1/produtos/{{produtoId}}",
+              "host": ["{{baseUrlProduto}}"],
+              "path": ["api", "v1", "produtos", "{{produtoId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Produtos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlProduto}}/api/v1/produtos?page=0&size=20&status=ATIVO",
+              "host": ["{{baseUrlProduto}}"],
+              "path": ["api", "v1", "produtos"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "status", "value": "ATIVO", "description": "opcional: ATIVO | CANCELADO", "disabled": false }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar Status do Produto",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELADO\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrlProduto}}/api/v1/produtos/{{produtoId}}/status",
+              "host": ["{{baseUrlProduto}}"],
+              "path": ["api", "v1", "produtos", "{{produtoId}}", "status"]
+            },
+            "description": "status: ATIVO | CANCELADO. Publica ProdutoAtualizado após o commit (evicção do cache no Cartão)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Portador",
+      "item": [
+        {
+          "name": "Buscar Portador por Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlPortador}}/api/v1/portadores/{{portadorId}}",
+              "host": ["{{baseUrlPortador}}"],
+              "path": ["api", "v1", "portadores", "{{portadorId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar Status do Portador",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"BLOQUEADO\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrlPortador}}/api/v1/portadores/{{portadorId}}/status",
+              "host": ["{{baseUrlPortador}}"],
+              "path": ["api", "v1", "portadores", "{{portadorId}}", "status"]
+            },
+            "description": "status: ATIVO | BLOQUEADO | CANCELADO."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cartão",
+      "item": [
+        {
+          "name": "Listar Cartões do Portador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Listagem retorna 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json.conteudo && json.conteudo.length > 0) { pm.environment.set('cartaoId', json.conteudo[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlCartao}}/api/v1/cartoes?portadorId={{portadorId}}&page=0&size=20",
+              "host": ["{{baseUrlCartao}}"],
+              "path": ["api", "v1", "cartoes"],
+              "query": [
+                { "key": "portadorId", "value": "{{portadorId}}" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Cartão só aparece aqui depois que a emissão assíncrona concluir (veja o passo 4 do fluxo)."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar Cartão por Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlCartao}}/api/v1/cartoes/{{cartaoId}}",
+              "host": ["{{baseUrlCartao}}"],
+              "path": ["api", "v1", "cartoes", "{{cartaoId}}"]
+            },
+            "description": "PAN sempre mascarado na resposta (ADR-007)."
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar Status do Cartão",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"BLOQUEADO\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrlCartao}}/api/v1/cartoes/{{cartaoId}}/status",
+              "host": ["{{baseUrlCartao}}"],
+              "path": ["api", "v1", "cartoes", "{{cartaoId}}", "status"]
+            },
+            "description": "status: ATIVO | BLOQUEADO | CANCELADO."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
