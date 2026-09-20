@@ -179,6 +179,7 @@ Registradas como ADRs em [`docs/adr/`](docs/adr/):
 | [004](docs/adr/004-autenticacao-jwt.md) | JWT: Portador emite, Produto e Cartão validam |
 | [005](docs/adr/005-transactional-outbox.md) | Transactional Outbox para a emissão de cartão (garantia de entrega) |
 | [007](docs/adr/007-protecao-dados-pan-lgpd.md) | Cifra (AES-GCM) + hash (SHA-256+pepper) para o PAN, mascaramento sempre na resposta |
+| [009](docs/adr/009-revisao-seguranca-owasp.md) | Revisão de segurança contra OWASP Top 10, categoria por categoria, com evidência |
 
 Outras decisões relevantes (sem ADR dedicado, documentadas inline no código):
 
@@ -262,6 +263,13 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
   (header `X-Correlation-Id` → MDC → atributos SQS) e `eventId` (nos listeners SQS do Cartão)
   aparecem automaticamente como campos de topo em todo log emitido durante a requisição/mensagem;
   nunca CPF ou PAN completos em log.
+
+**Revisão completa contra OWASP Top 10** (código real, categoria por categoria, com evidência):
+[ADR-009](docs/adr/009-revisao-seguranca-owasp.md). Lacunas reais assumidas conscientemente como
+backlog (risco baixo no contexto de um desafio local, sem exposição pública ou multiusuário real):
+sem autorização por posse de recurso (qualquer JWT válido acessa qualquer `portadorId`/`cartaoId`),
+sem rate limiting em `/api/v1/auth/login`, sem logging de tentativas de autenticação falhas, e CORS
+documentado mas não implementado em código (por ausência do frontend nesta entrega).
 
 ## Testes
 
