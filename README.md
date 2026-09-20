@@ -178,6 +178,7 @@ Registradas como ADRs em [`docs/adr/`](docs/adr/):
 | [003](docs/adr/003-estrategia-cache.md) | Cache-aside no Cartão (TTL 10 min + cache negativo 60 s), evicção por evento |
 | [004](docs/adr/004-autenticacao-jwt.md) | JWT: Portador emite, Produto e Cartão validam |
 | [005](docs/adr/005-transactional-outbox.md) | Transactional Outbox para a emissão de cartão (garantia de entrega) |
+| [006](docs/adr/006-retry-dlq-idempotencia.md) | Retry, DLQ e idempotência na emissão assíncrona; por que o backoff entre entregas SQS não foi implementado |
 | [007](docs/adr/007-protecao-dados-pan-lgpd.md) | Cifra (AES-GCM) + hash (SHA-256+pepper) para o PAN, mascaramento sempre na resposta |
 | [009](docs/adr/009-revisao-seguranca-owasp.md) | Revisão de segurança contra OWASP Top 10, categoria por categoria, com evidência |
 
@@ -190,7 +191,9 @@ Outras decisões relevantes (sem ADR dedicado, documentadas inline no código):
   decisão de escopo para caber no prazo revisado (ver `CLAUDE.md` seção 3.1); paralelização de I/O
   fica para uma iteração futura.
 - **Backoff do consumer de emissão via mecanismo nativo do SQS** (`maxReceiveCount` + visibility
-  timeout), não Resilience4j explícito — mesma razão de escopo.
+  timeout) combinado com o Retry+CircuitBreaker+TimeLimiter já existente na chamada HTTP ao Produto
+  — decisão avaliada e mantida conscientemente (não é lacuna esquecida), ver
+  [ADR-006](docs/adr/006-retry-dlq-idempotencia.md).
 
 ## Garantia: cartão nunca é criado para produto inexistente
 
