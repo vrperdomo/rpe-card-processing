@@ -4,6 +4,7 @@ import br.com.rpe.portador.adapters.in.web.dto.ErroCampoResponse;
 import br.com.rpe.portador.domain.exception.ConflitoException;
 import br.com.rpe.portador.domain.exception.CredenciaisInvalidasException;
 import br.com.rpe.portador.domain.exception.DependenciaIndisponivelException;
+import br.com.rpe.portador.domain.exception.RecursoNaoEncontradoException;
 import br.com.rpe.portador.domain.exception.RegraNegocioException;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -48,6 +50,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<ProblemDetail> tratarConflito(ConflitoException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(problemDetailFactory.criar(HttpStatus.CONFLICT, "Conflito", ex.getMessage()));
+  }
+
+  @ExceptionHandler(RecursoNaoEncontradoException.class)
+  public ResponseEntity<ProblemDetail> tratarRecursoNaoEncontrado(
+      RecursoNaoEncontradoException ex) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(
+            problemDetailFactory.criar(
+                HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.getMessage()));
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  public ResponseEntity<ProblemDetail> tratarConflitoDeVersao(
+      ObjectOptimisticLockingFailureException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            problemDetailFactory.criar(
+                HttpStatus.CONFLICT,
+                "Conflito",
+                "O recurso foi modificado por outra requisição; tente novamente"));
   }
 
   /**
