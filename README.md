@@ -167,6 +167,8 @@ Registradas como ADRs em [`docs/adr/`](docs/adr/):
 
 | ADR | Decisão |
 |---|---|
+| [001](docs/adr/001-monorepo-pom-agregador.md) | Monorepo com POM Maven agregador para os 3 serviços |
+| [002](docs/adr/002-arquitetura-hexagonal-enxuta.md) | Arquitetura hexagonal enxuta, verificada por ArchUnit |
 | [003](docs/adr/003-estrategia-cache.md) | Cache-aside no Cartão (TTL 10 min + cache negativo 60 s), evicção por evento |
 | [004](docs/adr/004-autenticacao-jwt.md) | JWT: Portador emite, Produto e Cartão validam |
 | [005](docs/adr/005-transactional-outbox.md) | Transactional Outbox para a emissão de cartão (garantia de entrega) |
@@ -199,15 +201,15 @@ O Portador continua aceitando cadastros normalmente: o evento fica `PENDENTE` na
 e o Relay tenta publicar a cada execução, com backoff exponencial. Assim que o SQS volta, o próximo
 ciclo do Relay publica o(s) evento(s) pendente(s) — nenhum cadastro é perdido.
 
-Para reproduzir manualmente (script dedicado ficou fora do escopo desta entrega — ver seção 3.1 do
-`CLAUDE.md`):
+Reproduzível com um comando (stack precisa estar no ar via `docker compose up -d --build --wait`):
 
 ```bash
-docker compose stop localstack
-# cadastre um portador normalmente (o POST continua respondendo 201)
-docker compose start localstack
-# aguarde o próximo ciclo do relay (rpe.portador.outbox.relay.intervalo, default 5s)
+./scripts/chaos-sqs-down.sh
 ```
+
+O script derruba o LocalStack, cadastra um portador (confirma `201` e `emissao: PENDENTE`), sobe o
+LocalStack de novo e aguarda a emissão chegar a `CONCLUIDA` — falha alto (`exit 1`) se qualquer uma
+dessas garantias não se confirmar contra a stack real.
 
 ### Produto Service fora do ar
 
@@ -217,11 +219,15 @@ docker compose start localstack
   mensagem **não** é confirmada (ack) e o SQS reentrega automaticamente até `maxReceiveCount`,
   quando então a própria fila move a mensagem para a DLQ via redrive policy.
 
+Reproduzível com um comando (stack precisa estar no ar via `docker compose up -d --build --wait`):
+
 ```bash
-docker compose stop produto-service
-# GET num cartão/portador cujo produto não está em cache deve retornar 503 + Retry-After
-docker compose start produto-service
+./scripts/chaos-produto-down.sh
 ```
+
+O script emite um cartão normalmente, zera o cache Redis (garante cache frio), derruba o Produto
+Service, confirma `503` + header `Retry-After` na consulta do cartão, sobe o Produto de novo e
+confirma que a consulta volta a `200` assim que o circuito fecha.
 
 ### Erros na emissão de cartão (classificação)
 
@@ -262,7 +268,13 @@ docker compose start produto-service
   cadastro → outbox → SQS, publicação do `ProdutoAtualizado`, consumo de `CartaoEmissaoSolicitada`
   (feliz, produto inexistente → DLQ, payload ilegível → DLQ, erro transitório → sem DLQ manual).
 - WireMock para os clients HTTP entre serviços (offline, 404, lento, retry, circuito aberto).
+- ArchUnit (`ArquiteturaTest`, um por serviço) verifica as fronteiras hexagonais em todo `./mvnw
+  test`: domain sem Spring/JPA, application sem depender de adapters, adapters sem se chamar entre
+  si (ver [ADR-002](docs/adr/002-arquitetura-hexagonal-enxuta.md)).
 - Cobertura mínima JaCoCo de 80% em `domain` + `application` (gate no CI).
+- Scripts de caos (`./scripts/chaos-sqs-down.sh`, `./scripts/chaos-produto-down.sh`) validam a
+  resiliência contra a stack real via `docker compose`, não mocks — ver seção
+  [Resiliência](#resiliência).
 
 ## CI
 
