@@ -35,6 +35,7 @@ public class CartaoEmissaoSolicitadaListener {
 
   private static final Logger log = LoggerFactory.getLogger(CartaoEmissaoSolicitadaListener.class);
   private static final String MDC_CORRELATION_ID = "correlationId";
+  private static final String MDC_EVENT_ID = "eventId";
 
   private final EmitirCartaoUseCase useCase;
   private final SqsTemplate sqsTemplate;
@@ -79,6 +80,7 @@ public class CartaoEmissaoSolicitadaListener {
       enviarParaDlq(corpo, "schema_incompativel");
       return;
     }
+    MDC.put(MDC_EVENT_ID, mensagem.eventId().toString());
     try {
       useCase.executar(
           mensagem.eventId(),
@@ -92,6 +94,8 @@ public class CartaoEmissaoSolicitadaListener {
       // Corrida entre duas entregas da mesma mensagem (ou eventos distintos para o mesmo par
       // portador+produto): a constraint UNIQUE do banco e quem barra, tratado como idempotente.
       log.info("Constraint de unicidade violada ao emitir cartão, tratando como já processado");
+    } finally {
+      MDC.remove(MDC_EVENT_ID);
     }
   }
 
