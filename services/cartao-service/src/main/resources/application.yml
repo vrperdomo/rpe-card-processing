@@ -1,0 +1,100 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: cartao-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cartao_db}
+    username: ${SPRING_DATASOURCE_USERNAME:rpe}
+    password: ${SPRING_DATASOURCE_PASSWORD:rpe}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:us-east-1}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      sqs:
+        endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+rpe:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-insecure-secret-troque-em-producao-32chars}
+    issuer: ${JWT_ISSUER:https://portador-service.rpe.local}
+    audience: ${JWT_AUDIENCE:rpe-api}
+  cartao:
+    pan-criptografia:
+      senha: ${PAN_CRIPTOGRAFIA_SENHA:dev-only-insecure-senha-troque-em-producao}
+      salt: ${PAN_CRIPTOGRAFIA_SALT:deadbeefcafebabe}
+      pepper: ${PAN_CRIPTOGRAFIA_PEPPER:dev-only-insecure-pepper-troque-em-producao}
+    produto-client:
+      base-url: ${PRODUTO_SERVICE_URL:http://localhost:8081}
+      connect-timeout: 2s
+      read-timeout: 3s
+    produto-cache:
+      ttl: 10m
+      ttl-negativo: 60s
+    mensageria:
+      produto-eventos-queue: produto-eventos-queue
+      produto-eventos-dlq: produto-eventos-dlq
+      cartao-emissao-queue: cartao-emissao-queue
+      cartao-emissao-dlq: cartao-emissao-dlq
+      listener-auto-startup: true
+
+resilience4j:
+  retry:
+    instances:
+      produto:
+        max-attempts: 3
+        wait-duration: 200ms
+        exponential-backoff-multiplier: 2
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+  circuitbreaker:
+    instances:
+      produto:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+  timelimiter:
+    instances:
+      produto:
+        timeout-duration: 3s
+        cancel-running-future: true

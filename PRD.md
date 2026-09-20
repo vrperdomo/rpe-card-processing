@@ -568,8 +568,10 @@ SemVer. Cada fase concluída gera uma release menor (`v0.1.0` … `v0.7.0`); ent
 
 ## 15. Fases, milestones e backlog
 
+> ⚠️ **Cronograma abaixo superado em 20/09/2026.** Uma auditoria do código real (não dos labels do GitHub) mostrou que o ritmo diário original não era alcançável — ver **CLAUDE.md seção 3.1** para o replanejamento vigente: prazo único `v1.0.0` em **21/09 às 13h**, com corte explícito de itens de processo/automação (ArchUnit, Postman/Newman, `e2e.yml`, `docker-publish.yml`, `.devcontainer`, backoff explícito no consumer SQS, logs JSON, entre outros) que não mudam o comportamento avaliado da aplicação. O backlog por fase abaixo continua valendo como **escopo funcional completo de referência** (o que cada requisito Must/Should/Could significa); CLAUDE.md §3.1 é quem define o que efetivamente entra nesta entrega.
+>
 > **Prazo final: 21/09/2026 (segunda-feira).** Planejamento iniciado em 17/09/2026. São 5 dias corridos.
-> **Estratégia de prazo:** o backend completo e avaliável é entregue como **`v1.0.0` no domingo 20/09**. O frontend vira **`v1.1.0`** e só entra se sobrar tempo. Segunda-feira fica como **buffer**, sem funcionalidade nova.
+> **Estratégia de prazo (original, superada):** o backend completo e avaliável é entregue como **`v1.0.0` no domingo 20/09**. O frontend vira **`v1.1.0`** e só entra se sobrar tempo. Segunda-feira fica como **buffer**, sem funcionalidade nova.
 > Cada fase = 1 milestone = 1 release. Uma fase só começa com CI verde em `develop`.
 > Com o prazo curto, é permitido agrupar 2–3 issues pequenas da mesma fase em um único PR, desde que o título referencie todas (`Refs: #9 #10`).
 
