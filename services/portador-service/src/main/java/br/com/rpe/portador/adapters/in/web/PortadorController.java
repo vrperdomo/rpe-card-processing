@@ -2,9 +2,12 @@ package br.com.rpe.portador.adapters.in.web;
 
 import br.com.rpe.portador.adapters.in.web.dto.AlterarStatusPortadorRequest;
 import br.com.rpe.portador.adapters.in.web.dto.CadastrarPortadorRequest;
+import br.com.rpe.portador.adapters.in.web.dto.PortadorCompletoResponse;
 import br.com.rpe.portador.adapters.in.web.dto.PortadorResponse;
+import br.com.rpe.portador.adapters.in.web.mapper.PortadorCompletoWebMapper;
 import br.com.rpe.portador.adapters.in.web.mapper.PortadorWebMapper;
 import br.com.rpe.portador.application.usecase.AlterarStatusPortadorUseCase;
+import br.com.rpe.portador.application.usecase.BuscarPortadorCompletoUseCase;
 import br.com.rpe.portador.application.usecase.BuscarPortadorUseCase;
 import br.com.rpe.portador.application.usecase.CadastrarPortadorUseCase;
 import br.com.rpe.portador.config.CorrelationIdFilter;
@@ -32,18 +35,24 @@ public class PortadorController {
 
   private final CadastrarPortadorUseCase cadastrarPortadorUseCase;
   private final BuscarPortadorUseCase buscarPortadorUseCase;
+  private final BuscarPortadorCompletoUseCase buscarPortadorCompletoUseCase;
   private final AlterarStatusPortadorUseCase alterarStatusPortadorUseCase;
   private final PortadorWebMapper mapper;
+  private final PortadorCompletoWebMapper completoMapper;
 
   public PortadorController(
       CadastrarPortadorUseCase cadastrarPortadorUseCase,
       BuscarPortadorUseCase buscarPortadorUseCase,
+      BuscarPortadorCompletoUseCase buscarPortadorCompletoUseCase,
       AlterarStatusPortadorUseCase alterarStatusPortadorUseCase,
-      PortadorWebMapper mapper) {
+      PortadorWebMapper mapper,
+      PortadorCompletoWebMapper completoMapper) {
     this.cadastrarPortadorUseCase = cadastrarPortadorUseCase;
     this.buscarPortadorUseCase = buscarPortadorUseCase;
+    this.buscarPortadorCompletoUseCase = buscarPortadorCompletoUseCase;
     this.alterarStatusPortadorUseCase = alterarStatusPortadorUseCase;
     this.mapper = mapper;
+    this.completoMapper = completoMapper;
   }
 
   @PostMapping
@@ -65,6 +74,12 @@ public class PortadorController {
   @Operation(summary = "Busca um portador por id")
   public PortadorResponse buscar(@PathVariable UUID id) {
     return mapper.paraResponse(buscarPortadorUseCase.executar(id));
+  }
+
+  @GetMapping("/{id}/completo")
+  @Operation(summary = "Busca portador + cartão + produto agregados (resposta degradável)")
+  public PortadorCompletoResponse buscarCompleto(@PathVariable UUID id) {
+    return completoMapper.paraResponse(buscarPortadorCompletoUseCase.executar(id));
   }
 
   @PatchMapping("/{id}/status")

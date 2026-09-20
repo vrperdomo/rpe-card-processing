@@ -42,7 +42,8 @@ public class ProdutoResilienteGateway {
               .uri("/api/v1/produtos/{id}", produtoId)
               .retrieve()
               .body(ProdutoHttpResponse.class);
-      return Optional.ofNullable(resposta).map(r -> new ProdutoDto(r.id(), r.status()));
+      return Optional.ofNullable(resposta)
+          .map(r -> new ProdutoDto(r.id(), r.nome(), r.categoria(), r.status()));
     } catch (HttpClientErrorException.NotFound ex) {
       return Optional.empty();
     }

@@ -47,7 +47,8 @@ class CadastrarPortadorUseCaseTest {
 
   private void produtoAtivo() {
     when(produtoClient.buscarPorId(PRODUTO_ID))
-        .thenReturn(Optional.of(new ProdutoDto(PRODUTO_ID, StatusProdutoExterno.ATIVO)));
+        .thenReturn(
+            Optional.of(new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.ATIVO)));
   }
 
   @Test
@@ -123,7 +124,9 @@ class CadastrarPortadorUseCaseTest {
   @Test
   void deveRejeitarQuandoProdutoNaoEstaAtivo() {
     when(produtoClient.buscarPorId(PRODUTO_ID))
-        .thenReturn(Optional.of(new ProdutoDto(PRODUTO_ID, StatusProdutoExterno.CANCELADO)));
+        .thenReturn(
+            Optional.of(
+                new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.CANCELADO)));
 
     assertThatThrownBy(
             () ->
