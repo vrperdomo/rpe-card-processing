@@ -9,4 +9,6 @@ import org.springframework.validation.annotation.Validated;
 public record MensageriaProperties(
     @NotBlank String produtoEventosQueue,
     @NotBlank String produtoEventosDlq,
+    @NotBlank String cartaoEmissaoQueue,
+    @NotBlank String cartaoEmissaoDlq,
     boolean listenerAutoStartup) {}
