@@ -1,6 +1,7 @@
 package br.com.rpe.portador.adapters.in.web;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -75,7 +76,11 @@ class PortadorControllerTest {
         Portador.cadastrar(
             "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
     when(cadastrarPortadorUseCase.executar(
-            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID))
+            eq("Victor Rodrigues"),
+            eq(Cpf.of(CPF_VALIDO)),
+            eq(LocalDate.of(2000, 1, 1)),
+            eq(PRODUTO_ID),
+            any()))
         .thenReturn(portador);
 
     mockMvc
@@ -113,7 +118,7 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar422QuandoProdutoNaoEstaAtivo() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
         .thenThrow(new RegraNegocioException("Produto não está ATIVO"));
 
     mockMvc
@@ -127,7 +132,7 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar422QuandoMenorDeIdade() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
         .thenThrow(new RegraNegocioException("Portador deve ter pelo menos 18 anos completos"));
 
     mockMvc
@@ -141,7 +146,7 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar409QuandoCpfDuplicado() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
         .thenThrow(new ConflitoException("CPF já cadastrado"));
 
     mockMvc
@@ -155,7 +160,7 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar409QuandoConstraintDeUnicidadeViolarNaCorrida() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
         .thenThrow(new DataIntegrityViolationException("uk_portador_cpf"));
 
     mockMvc
@@ -169,7 +174,7 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar503ComRetryAfterQuandoProdutoIndisponivel() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
         .thenThrow(
             new DependenciaIndisponivelException(
                 "Produto Service indisponível", Duration.ofSeconds(10)));
