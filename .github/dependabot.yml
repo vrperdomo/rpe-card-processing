@@ -1,19 +1,25 @@
 version: 2
 updates:
+  # target-branch: develop em todos os ecossistemas — o git flow do projeto (CLAUDE.md secao 4)
+  # exige que toda mudanca passe por develop antes de main; sem isso, o Dependabot abria PRs
+  # direto contra main (branch padrao do repositorio), pulando develop e a esteira normal de CI.
   - package-ecosystem: maven
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
 
   - package-ecosystem: docker
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
