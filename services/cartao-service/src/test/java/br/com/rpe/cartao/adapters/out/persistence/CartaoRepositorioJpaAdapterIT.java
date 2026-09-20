@@ -23,6 +23,8 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -134,5 +136,21 @@ class CartaoRepositorioJpaAdapterIT extends IntegrationTestBase {
               entityManager.flush();
             })
         .isInstanceOf(ConstraintViolationException.class);
+  }
+
+  @Test
+  void deveListarCartoesPaginadosPorPortador() {
+    UUID portadorId = UUID.randomUUID();
+    adapter.salvar(novoCartao(portadorId, UUID.randomUUID(), "4532015112830366"));
+    adapter.salvar(novoCartao(portadorId, UUID.randomUUID(), "4916338506082832"));
+    adapter.salvar(novoCartao(UUID.randomUUID(), UUID.randomUUID(), "4532015112830994"));
+    entityManager.flush();
+    entityManager.clear();
+
+    Page<Cartao> pagina = adapter.buscarPorPortadorId(portadorId, PageRequest.of(0, 10));
+
+    assertThat(pagina.getTotalElements()).isEqualTo(2);
+    assertThat(pagina.getContent())
+        .allSatisfy(cartao -> assertThat(cartao.getPortadorId()).isEqualTo(portadorId));
   }
 }

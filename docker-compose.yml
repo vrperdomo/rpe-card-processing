@@ -58,10 +58,13 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
+      AWS_SQS_ENDPOINT: http://localstack:4566
     ports:
       - "${PRODUTO_SERVICE_PORT:-8081}:8081"
     depends_on:
       postgres:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
@@ -116,6 +119,11 @@ services:
       PAN_CRIPTOGRAFIA_SENHA: ${PAN_CRIPTOGRAFIA_SENHA}
       PAN_CRIPTOGRAFIA_SALT: ${PAN_CRIPTOGRAFIA_SALT}
       PAN_CRIPTOGRAFIA_PEPPER: ${PAN_CRIPTOGRAFIA_PEPPER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      PRODUTO_SERVICE_URL: http://produto-service:8081
+      REDIS_HOST: redis
       AWS_SQS_ENDPOINT: http://localstack:4566
     ports:
       - "${CARTAO_SERVICE_PORT:-8083}:8083"
@@ -123,6 +131,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      produto-service:
         condition: service_healthy
       localstack:
         condition: service_healthy
