@@ -65,6 +65,8 @@ rpe:
     mensageria:
       produto-eventos-queue: produto-eventos-queue
       produto-eventos-dlq: produto-eventos-dlq
+      cartao-emissao-queue: cartao-emissao-queue
+      cartao-emissao-dlq: cartao-emissao-dlq
       listener-auto-startup: true
 
 resilience4j:
