@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.rpe.cartao.IntegrationTestBase;
 import br.com.rpe.cartao.adapters.out.http.ProdutoHttpClient;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
 import br.com.rpe.cartao.application.port.out.StatusProdutoExterno;
@@ -39,7 +40,7 @@ import org.testcontainers.utility.DockerImageName;
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     properties = "rpe.cartao.mensageria.listener-auto-startup=false")
 @Testcontainers
-class ProdutoCacheAsideClientTest {
+class ProdutoCacheAsideClientTest extends IntegrationTestBase {
 
   @Container @ServiceConnection
   static final GenericContainer<?> REDIS =

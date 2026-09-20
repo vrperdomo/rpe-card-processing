@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 // Auto-startup do listener SQS desligado: este smoke test não sobe LocalStack.
 @SpringBootTest(properties = "rpe.cartao.mensageria.listener-auto-startup=false")
-class CartaoServiceApplicationTests {
+class CartaoServiceApplicationTests extends IntegrationTestBase {
 
   @Test
   void contextLoads() {}
