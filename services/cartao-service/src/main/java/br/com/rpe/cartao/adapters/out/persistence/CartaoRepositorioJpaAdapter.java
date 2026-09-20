@@ -4,6 +4,8 @@ import br.com.rpe.cartao.application.port.out.CartaoRepositorio;
 import br.com.rpe.cartao.domain.Cartao;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,5 +41,10 @@ public class CartaoRepositorioJpaAdapter implements CartaoRepositorio {
   @Override
   public boolean existePorPortadorEProduto(UUID portadorId, UUID produtoId) {
     return jpaRepository.existsByPortadorIdAndProdutoId(portadorId, produtoId);
+  }
+
+  @Override
+  public Page<Cartao> buscarPorPortadorId(UUID portadorId, Pageable pageable) {
+    return jpaRepository.findByPortadorId(portadorId, pageable).map(mapper::paraDominio);
   }
 }
