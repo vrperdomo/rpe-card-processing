@@ -53,10 +53,10 @@ Antes de adicionar **qualquer** dependência: justificar, verificar compatibilid
 
 ## 3. Fases (seguir em ordem)
 
-> ⏰ **Prazo final: 21/09/2026.** O backend completo sai como `v1.0.0` em **20/09**. O frontend (`v1.1.0`) é **opcional** e só começa depois da `v1.0.0`.
+> ⏰ **Prazo final revisado: 21/09/2026 às 13h.** Ver seção 3.1 (replanejamento de 20/09) — o cronograma diário original abaixo está **superado** e mantido só como referência histórica do escopo completo do desafio.
 > O Claude deve sempre priorizar **entregar funcionando** antes de sofisticar. Itens "Could" nunca bloqueiam release. Se uma tarefa ameaçar o cronograma, avisar imediatamente e propor corte.
 
-| Fase | Milestone | Foco | Release | Dia |
+| Fase | Milestone | Foco | Release | Dia (original, superado) |
 |---|---|---|---|---|
 | F0 | M0 - Fundação | Repo, CI base, Compose, skeletons, devcontainer | v0.1.0 | 17/09 |
 | F1 | M1 - Produto Service | CRUD, auditoria, JWT (resource server), evento `ProdutoAtualizado` | v0.2.0 | 17/09 |
@@ -67,13 +67,40 @@ Antes de adicionar **qualquer** dependência: justificar, verificar compatibilid
 | F6 | M6 - Release 1.0 | Hardening, README, demo gravada, **release (ENTREGA)** | **v1.0.0** | 20/09 |
 | F7 | M7 - Frontend | React enxuto (opcional) | v1.1.0 | 21/09 |
 
+### 3.1 Replanejamento de escopo (decidido em 20/09/2026, ~04h20)
+
+**Motivo:** auditoria do código real (não dos labels do GitHub, que estavam desatualizados) mostrou que o cronograma diário original já não era alcançável — F4 (o consumer SQS que efetivamente emite o cartão) estava em 0%, apesar de domínio/persistência/outbox prontos, e ainda restavam ~42h de trabalho Must/Should para F1/F4/F5/F6. O Victor pediu para recalcular o escopo para caber até **21/09 13h**.
+
+**Novo alvo único: `v1.0.0` até 21/09 13h.** Não há mais checkpoint intermediário no dia 20/09. F7 (frontend) está fora desta entrega.
+
+**Critério de corte:** mantém-se tudo que aparece nas "Prioridades do avaliador" (seção 1) — SOLID, exceções/HTTP semântico, Retry+DLQ, cache Redis, Docker em 1 comando, Testcontainers, README profissional, comportamento com SQS fora/Produto offline. Corta-se automação/processo que não muda o que o avaliador vê rodando a aplicação.
+
+**Ordem de execução (Must, não cortar):**
+1. F1 remanescente — `ProdutoAtualizado` publicado pelo Produto após commit (PR-08, decisão 19.3). Sem isso a evicção de cache do Cartão nunca é acionada de verdade em produção.
+2. F4 completo — Listener SQS no Cartão (`cartao-emissao-queue`), idempotência (`mensagem_processada` + constraint única portador+produto), classificação erro transitório × definitivo, DLQ com `maxReceiveCount` nativo do SQS (backoff explícito com Resilience4j fica **fora** desta entrega, ver corte abaixo), métrica básica `cartao.emitidos`/`cartao.dlq.enviados`.
+3. F5 essencial — `GET /api/v1/portadores/{id}/completo` (PO-09), **chamadas sequenciais** (Portador → Cartão → Produto) em vez de paralelas — resposta degradada (200 + `avisos`) continua valendo, só a paralelização de I/O fica para depois.
+4. F6 essencial — README profissional (arquitetura, setup em 1 comando, decisões técnicas, resiliência, troubleshooting), checklist curto de segurança (segredos via env, PAN mascarado/cifrado — já cobertos) dentro do próprio README em vez de um documento de revisão separado, e release manual (`git tag v1.0.0` + `gh release create`, comandos listados para o Victor executar) em vez de workflow `release.yml` automatizado.
+
+**Cortado desta entrega (registrar como issues de backlog pós-21/09, não bloqueiam o release):**
+- `.devcontainer` (Codespaces) e demo gravada — Docker Compose local já cobre a demonstração.
+- ArchUnit (um teste por serviço) — arquitetura já é validada manualmente pela revisão de código a cada PR.
+- Scripts de caos dedicados (`chaos-*.sh`) — o comportamento de resiliência é o mesmo; falta só o script, que vira passo manual documentado no README.
+- Postman Collection + Newman.
+- Workflow `e2e.yml` dedicado — a suíte de integração (`@SpringBootTest` + Testcontainers) já cobre os fluxos críticos.
+- `docker-publish.yml` (GHCR) — imagens continuam buildando localmente via `docker compose up --build`.
+- Contrato de evento validado via JSON Schema formal — mantém-se um teste de contrato mais simples (assertion direta no payload serializado).
+- Backoff explícito com Resilience4j no consumer SQS — usa-se o backoff nativo do SQS (visibility timeout) + `maxReceiveCount` até a DLQ.
+- Logs estruturados em JSON — mantém-se o formato padrão do Spring Boot; `correlationId` no MDC continua obrigatório.
+- (Já era Could) `/api/v1/admin/dlq`.
+- CODEOWNERS, templates de issue/PR.
+
 ### Decisões já tomadas (não reabrir sem motivo forte)
 - **JWT:** o Portador emite; Produto e Cartão validam (resource servers). Segredo via env.
 - **Cache:** cache-aside no Cartão com TTL de 10 min e cache negativo de 60 s. O evento `ProdutoAtualizado` (after-commit) remove a chave. O TTL é a rede de segurança.
-- **Consulta agregada:** resposta degradada (200 + `avisos`); 503 só se o portador não puder ser lido.
+- **Consulta agregada:** resposta degradada (200 + `avisos`); 503 só se o portador não puder ser lido; chamadas **sequenciais** por decisão de 20/09 (seção 3.1), paralelização fica para depois do release.
 - **Regras:** um cartão por par portador + produto; portador com ≥ 18 anos.
-- **Frontend:** token apenas em memória.
-- **Demo:** custo zero, com GitHub Codespaces (`.devcontainer`), demo gravada e imagens no GHCR. Sem hospedagem paga nem cadastro de cartão de crédito.
+- **Frontend:** token apenas em memória; **fora da entrega de 21/09 13h** (decisão 20/09, seção 3.1).
+- **Demo:** custo zero, via Docker Compose local (`docker compose up --build`). GitHub Codespaces (`.devcontainer`), demo gravada e imagens no GHCR ficam para depois do release (decisão 20/09, seção 3.1). Sem hospedagem paga nem cadastro de cartão de crédito.
 
 **Ao iniciar uma sessão**, o Claude deve:
 1. Rodar `git status` e `git branch --show-current`.
