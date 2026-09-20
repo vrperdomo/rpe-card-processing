@@ -17,12 +17,24 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:us-east-1}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      sqs:
+        endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
 
 rpe:
   jwt:
     secret: ${JWT_SECRET:dev-only-insecure-secret-troque-em-producao-32chars}
     issuer: ${JWT_ISSUER:https://portador-service.rpe.local}
     audience: ${JWT_AUDIENCE:rpe-api}
+  produto:
+    mensageria:
+      produto-eventos-queue: produto-eventos-queue
 
 management:
   endpoints:
