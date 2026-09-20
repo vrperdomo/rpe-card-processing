@@ -40,6 +40,7 @@
     <wiremock.version>3.13.2</wiremock.version>
     <awaitility.version>4.3.0</awaitility.version>
     <spring-cloud-aws.version>3.4.2</spring-cloud-aws.version>
+    <archunit.version>1.5.0</archunit.version>
 
     <!-- Gate de cobertura (CLAUDE.md secao 7 / 9): 80% em domain + application.
          Sem classes nesses pacotes ainda (Fase 0) o check nao acusa violacao;
@@ -85,6 +86,11 @@
         <groupId>org.awaitility</groupId>
         <artifactId>awaitility</artifactId>
         <version>${awaitility.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tngtech.archunit</groupId>
+        <artifactId>archunit-junit5</artifactId>
+        <version>${archunit.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
