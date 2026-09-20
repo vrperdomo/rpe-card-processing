@@ -6,11 +6,12 @@ import br.com.rpe.portador.IntegrationTestBase;
 import br.com.rpe.portador.application.evento.CartaoEmissaoSolicitadaData;
 import br.com.rpe.portador.application.evento.EventoOutbox;
 import br.com.rpe.portador.application.evento.EventoPendente;
-import br.com.rpe.portador.config.ClockConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -22,12 +23,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
+// Clock fixo em AGORA (nao ClockConfig real) de proposito: buscarLotePendente compara
+// proxima_tentativa_em contra Instant.now(clock), entao o teste precisa controlar "agora" para que
+// "tentativa futura" seja deterministicamente futura, independente da data real da maquina.
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({
   JacksonAutoConfiguration.class,
-  ClockConfig.class,
-  OutboxRepositorioJpaAdapterIT.MetricsConfig.class,
+  OutboxRepositorioJpaAdapterIT.TestConfig.class,
   OutboxRepositorioJpaAdapter.class
 })
 class OutboxRepositorioJpaAdapterIT extends IntegrationTestBase {
@@ -40,10 +43,15 @@ class OutboxRepositorioJpaAdapterIT extends IntegrationTestBase {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private SimpleMeterRegistry meterRegistry;
 
-  static class MetricsConfig {
+  static class TestConfig {
     @Bean
     SimpleMeterRegistry meterRegistry() {
       return new SimpleMeterRegistry();
+    }
+
+    @Bean
+    Clock clock() {
+      return Clock.fixed(AGORA, ZoneOffset.UTC);
     }
   }
 
