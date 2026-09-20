@@ -257,8 +257,11 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
 - **Endpoints públicos:** só `/api/v1/auth/login`, `/actuator/health/**`, `/v3/api-docs/**`,
   `/swagger-ui/**` — todo o resto exige Bearer JWT.
 - **SQL/JPQL:** só via Spring Data (repositórios derivados/JPQL parametrizado), nunca concatenação.
-- **Logs:** correlationId propagado (header `X-Correlation-Id` → MDC → atributos SQS); nunca CPF ou
-  PAN completos em log.
+- **Logs:** estruturados em JSON (formato ECS nativo do Spring Boot 3.4+,
+  `logging.structured.format.console=ecs`, sem dependência externa); `correlationId` propagado
+  (header `X-Correlation-Id` → MDC → atributos SQS) e `eventId` (nos listeners SQS do Cartão)
+  aparecem automaticamente como campos de topo em todo log emitido durante a requisição/mensagem;
+  nunca CPF ou PAN completos em log.
 
 ## Testes
 

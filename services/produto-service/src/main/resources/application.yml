@@ -1,6 +1,14 @@
 server:
   port: 8081
 
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: produto-service
+
 spring:
   application:
     name: produto-service
