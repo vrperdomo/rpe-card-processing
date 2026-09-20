@@ -161,6 +161,12 @@ PORTADOR_ID=$(curl -s -X POST http://localhost:8082/api/v1/portadores \
 curl -s http://localhost:8082/api/v1/portadores/$PORTADOR_ID/completo -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+Alternativa aos curls acima: importe `docs/postman/RPE-Card-Processing.postman_collection.json` e o
+environment `docs/postman/RPE-Local.postman_environment.json` no Postman e rode a pasta "Fluxo de
+emissão de cartão" — cada requisição salva automaticamente o token/id necessário para a próxima
+(login → criar produto → cadastrar portador → consultar completo). Reexecutável sem colisão (nome
+do produto e CPF gerados dinamicamente a cada rodada).
+
 ## Decisões técnicas
 
 Registradas como ADRs em [`docs/adr/`](docs/adr/):
