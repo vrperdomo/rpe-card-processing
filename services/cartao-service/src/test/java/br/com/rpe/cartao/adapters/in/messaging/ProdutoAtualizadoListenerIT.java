@@ -3,6 +3,7 @@ package br.com.rpe.cartao.adapters.in.messaging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import br.com.rpe.cartao.IntegrationTestBase;
 import br.com.rpe.cartao.adapters.out.cache.ProdutoCacheEntry;
 import java.time.Duration;
 import java.util.Map;
@@ -27,7 +28,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers
-class ProdutoAtualizadoListenerIT {
+class ProdutoAtualizadoListenerIT extends IntegrationTestBase {
 
   private static final String FILA = "produto-eventos-queue";
   private static final String DLQ = "produto-eventos-dlq";

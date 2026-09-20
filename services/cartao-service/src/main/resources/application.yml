@@ -4,6 +4,16 @@ server:
 spring:
   application:
     name: cartao-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cartao_db}
+    username: ${SPRING_DATASOURCE_USERNAME:rpe}
+    password: ${SPRING_DATASOURCE_PASSWORD:rpe}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -41,6 +51,10 @@ rpe:
     issuer: ${JWT_ISSUER:https://portador-service.rpe.local}
     audience: ${JWT_AUDIENCE:rpe-api}
   cartao:
+    pan-criptografia:
+      senha: ${PAN_CRIPTOGRAFIA_SENHA:dev-only-insecure-senha-troque-em-producao}
+      salt: ${PAN_CRIPTOGRAFIA_SALT:deadbeefcafebabe}
+      pepper: ${PAN_CRIPTOGRAFIA_PEPPER:dev-only-insecure-pepper-troque-em-producao}
     produto-client:
       base-url: ${PRODUTO_SERVICE_URL:http://localhost:8081}
       connect-timeout: 2s

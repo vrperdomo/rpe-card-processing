@@ -10,6 +10,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.rpe.cartao.IntegrationTestBase;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
 import br.com.rpe.cartao.application.port.out.StatusProdutoExterno;
 import br.com.rpe.cartao.domain.exception.DependenciaIndisponivelException;
@@ -33,7 +34,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     properties = "rpe.cartao.mensageria.listener-auto-startup=false")
-class ProdutoHttpClientTest {
+class ProdutoHttpClientTest extends IntegrationTestBase {
 
   @RegisterExtension
   static WireMockExtension wireMock =
