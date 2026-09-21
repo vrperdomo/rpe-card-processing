@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rpe.local/contracts/produto-atualizado.schema.json",
+  "title": "ProdutoAtualizado",
+  "description": "Publicado por produto-service em produto-eventos-queue (PRD 8.3) apos commit da alteracao de status. Consumido por cartao-service para evictar o cache-aside do produto (ADR-003).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "eventVersion", "occurredAt", "correlationId", "data"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "ProdutoAtualizado" },
+    "eventVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["produtoId"],
+      "properties": {
+        "produtoId": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

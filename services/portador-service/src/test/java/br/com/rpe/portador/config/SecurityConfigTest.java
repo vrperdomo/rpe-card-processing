@@ -62,7 +62,7 @@ class SecurityConfigTest {
 
   @Test
   void deveExporLoginSemAutenticacao() throws Exception {
-    when(autenticarUseCase.executar("admin", "admin123"))
+    when(autenticarUseCase.executar("admin", "admin123", "127.0.0.1"))
         .thenReturn(new GeradorToken.Token("jwt-qualquer", 1800));
 
     mockMvc

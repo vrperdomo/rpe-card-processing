@@ -1,0 +1,45 @@
+name: Bug
+description: Reportar um comportamento incorreto em algum dos 3 serviços
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: servico
+    attributes:
+      label: Serviço afetado
+      options:
+        - produto-service
+        - portador-service
+        - cartao-service
+        - infra (docker-compose / CI)
+        - não sei / mais de um
+    validations:
+      required: true
+  - type: textarea
+    id: comportamento-atual
+    attributes:
+      label: Comportamento atual
+      description: O que acontece hoje.
+    validations:
+      required: true
+  - type: textarea
+    id: comportamento-esperado
+    attributes:
+      label: Comportamento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      description: Comandos/curls (sem CPF, PAN ou token reais — use dados fictícios).
+      placeholder: |
+        1. docker compose up -d --build --wait
+        2. curl ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs relevantes
+      description: Trecho do log estruturado (JSON/ECS). Confirme que não há CPF/PAN completo antes de colar.
+      render: json

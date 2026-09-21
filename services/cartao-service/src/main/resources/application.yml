@@ -1,6 +1,14 @@
 server:
   port: 8083
 
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: cartao-service
+
 spring:
   application:
     name: cartao-service
