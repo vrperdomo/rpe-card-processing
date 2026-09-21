@@ -362,16 +362,30 @@ do merge; branch protection formal em `develop`/`main` ainda não foi configurad
 
 ## Release
 
-Este projeto **não** usa `docker-publish.yml`/`release.yml` automatizados (fora do escopo desta
-entrega — ver `CLAUDE.md` seção 3.1). As imagens buildam localmente via `docker compose up --build`.
-A tag de release é criada manualmente:
+| Versão | Conteúdo |
+|---|---|
+| **v1.1.0** | Frontend React (login, cadastro de portador, detalhe com polling da emissão), limite de tentativas no login (429), logs estruturados em JSON, contratos de evento em JSON Schema, ArchUnit, scripts de caos, Postman/Newman, workflow e2e |
+| **v1.0.0** | Backend completo: 3 microsserviços, Outbox + SQS com retry/DLQ e idempotência, cache Redis, Resilience4j, Docker Compose, README e ADRs |
 
-```bash
-git switch main && git pull
-git merge --no-ff develop
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin main --tags
-gh release create v1.0.0 --title "v1.0.0" --generate-notes
-git switch develop && git merge --no-ff main
-git push origin develop
-```
+Este projeto **não** usa `docker-publish.yml`/`release.yml` automatizados (fora do escopo — ver
+`CLAUDE.md` seção 3.1). As imagens buildam localmente via `docker compose up --build`. A tag é criada
+manualmente, em `main`, seguindo o Git Flow (`release/x.y.z` sai da `develop` e vai para a `main` com
+*merge commit*, nunca *squash*):
+
+1. **PR `release/x.y.z` → `main`** e CI verde *antes* de qualquer tag. O PR valida o merge real,
+   incluindo o que só existe na `main` (por exemplo, atualizações do Dependabot mergeadas lá). O
+   `pr-lint` só aceita branches `feature|bugfix|docs|ci|chore/<issue>-<slug>` ou
+   `release|hotfix/<x.y.z>`, por isso o PR não pode sair direto da `develop`.
+2. **Tag e release**, com a `main` atualizada:
+   ```bash
+   git switch main && git pull
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   git push origin vX.Y.Z
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <notas.md>
+   ```
+3. **Back-merge** para que a `develop` receba o *merge commit* e tudo que a `main` ganhou:
+   ```bash
+   git switch develop && git pull
+   git merge --no-ff main
+   git push origin develop
+   ```
