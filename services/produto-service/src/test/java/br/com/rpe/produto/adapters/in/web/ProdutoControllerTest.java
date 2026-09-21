@@ -231,4 +231,69 @@ class ProdutoControllerTest {
                     """))
         .andExpect(status().isUnprocessableEntity());
   }
+
+  // Idioma inglês no pedido de propósito: a resposta é sempre em português (issue #119).
+  @Test
+  void deveResponderOsErrosDeCampoEmPortuguesMesmoComIdiomaIngles() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/produtos")
+                .with(jwt())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='nome')].message").value("não pode estar em branco"))
+        .andExpect(jsonPath("$.errors[?(@.field=='categoria')].message").value("é obrigatório"))
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='bin')].message")
+                .value(org.hamcrest.Matchers.hasItem("não pode estar em branco")));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoONomeForLongoDemais() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/produtos")
+                .with(jwt())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"nome\":\""
+                        + "x".repeat(101)
+                        + "\",\"categoria\":\"GOLD\",\"bin\":\"123456\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='nome')].message")
+                .value("o tamanho deve estar entre 0 e 100"));
+  }
+
+  @Test
+  void deveManterAMensagemPropriaDoBinAoInvesDaPadrao() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/produtos")
+                .with(jwt())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Gold\",\"categoria\":\"GOLD\",\"bin\":\"abc\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='bin')].message")
+                .value("bin deve conter exatamente 6 dígitos numéricos"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOCorpoForIlegivel() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/produtos")
+                .with(jwt())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ nome"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Requisição ilegível"));
+  }
 }

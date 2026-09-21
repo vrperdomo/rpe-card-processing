@@ -224,6 +224,7 @@ Regras verificadas por **ArchUnit**: `domain` não depende de nada externo; `app
 - `GlobalExceptionHandler` (`@RestControllerAdvice`) retornando **`ProblemDetail` (RFC 9457)** com `correlationId` e `timestamp`.
 - Hierarquia: `DomainException` → `RecursoNaoEncontradoException` (404), `ConflitoException` (409), `RegraNegocioException` (422); `DependenciaIndisponivelException` (503 + `Retry-After`).
 - Nunca vazar stack trace ou mensagem interna na resposta.
+- Mensagens ao cliente **sempre em português**: as do Bean Validation e as dos erros do Spring MVC ficam no `messages.properties` de cada serviço (sem `messages_en`). Restrição nova do Jakarta Validation sem tradução quebra `MensagensEmPortuguesTest`.
 - `POST` de criação → `201` + header `Location`.
 
 ### 6.4 Mensageria (SQS)
