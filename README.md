@@ -109,9 +109,12 @@ portas) → `adapters/in|out` (web, mensageria, persistência, HTTP, cache, segu
 ## Setup em 1 comando
 
 ```bash
-cp .env.example .env
 docker compose up -d --build --wait
 ```
+
+Sem nenhum outro passo: cada variável tem um padrão de desenvolvimento no `docker-compose.yml` (os
+mesmos valores fictícios, marcados `dev-only-insecure`, do `.env.example`). Para trocar algum valor,
+`cp .env.example .env` e edite: o `.env`, se existir, sobrescreve os padrões.
 
 Isso sobe Postgres (3 bancos), Redis, LocalStack (filas + DLQs já provisionadas), os 3 serviços e o
 frontend (Nginx), aguardando todos os healthchecks ficarem `healthy`. Para derrubar:
@@ -146,6 +149,14 @@ curl -s -X POST http://localhost:8082/api/v1/auth/login \
 A resposta traz um `accessToken` (Bearer) a ser usado em `Authorization: Bearer <accessToken>` nas
 chamadas aos três serviços. Usuário seed só existe em ambiente local/demo (sem cadastro de usuários
 nesta fase).
+
+**Pelo Swagger** (é o caminho mais rápido para testar): (1) em `http://localhost:8082/swagger-ui.html`
+abra `POST /api/v1/auth/login` → *Try it out* → *Execute* (o corpo já vem preenchido com o usuário
+seed) e copie o `accessToken`; (2) clique em **Authorize** (o cadeado, no alto de qualquer um dos três
+Swaggers), cole só o token e confirme. O Swagger guarda o token ao recarregar a página. Os corpos de
+exemplo também vêm preenchidos com valores válidos (CPF com dígitos verificadores corretos, adulto);
+para cadastrar um portador falta apenas o `produtoId` de um produto `ATIVO`: crie um em
+`POST /api/v1/produtos` (Swagger do Produto) e copie o `id` da resposta.
 
 **No frontend** (`http://localhost:3000`, mesmas credenciais): o token fica **só em memória** — nunca
 em `localStorage`, `sessionStorage` nem cookie —, então recarregar a página pede novo login. As
@@ -390,7 +401,7 @@ do merge; branch protection formal em `develop`/`main` ainda não foi configurad
 | `503` ao consultar cartão/produto | Circuito aberto (Produto/Cartão fora) | Aguarde `wait-duration-in-open-state` (10s) ou suba o serviço dependente |
 | Emissão nunca sai de `PENDENTE` | Outbox Relay desativado ou SQS fora | Confira `rpe.portador.outbox.relay.ativo` e `docker compose ps localstack` |
 | Erro de `ddl-auto: validate` no boot | Migração Flyway com tipo de coluna incompatível com o campo JPA (`CHAR` vs `VARCHAR`) | Confira se toda coluna mapeada para `String` usa `VARCHAR` na migração |
-| `docker compose config` falha | Variável de ambiente ausente no `.env` | Rode `cp .env.example .env` e ajuste os valores |
+| `docker compose config` reclama de sintaxe | `.env` próprio com valor inválido (ex.: `$` sem escape) | Corrija o `.env` ou apague-o: os padrões de desenvolvimento voltam a valer |
 
 ## Release
 
