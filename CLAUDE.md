@@ -55,7 +55,7 @@ Majors que tiram o projeto da linha da stack (Spring Boot 4.x, springdoc 3.x, Ja
 
 ## 3. Fases (seguir em ordem)
 
-> ✅ **Estado em 21/09/2026: `v1.0.0` (20/09), `v1.1.0` e `v1.2.0` (21/09) entregues**, dentro do prazo final (21/09 às 13h). A seção 3.1 registra o que entrou em cada versão e o que segue em backlog. O cronograma diário abaixo está **superado** e mantido só como referência histórica do escopo completo do desafio.
+> ✅ **Estado em 21/09/2026: `v1.0.0` (20/09), `v1.1.0`, `v1.2.0` e `v1.2.1` (21/09) entregues**, dentro do prazo final (21/09 às 13h). A seção 3.1 registra o que entrou em cada versão e o que segue em backlog. O cronograma diário abaixo está **superado** e mantido só como referência histórica do escopo completo do desafio.
 > O Claude deve sempre priorizar **entregar funcionando** antes de sofisticar. Itens "Could" nunca bloqueiam release. Se uma tarefa ameaçar o prazo ou uma release, avisar imediatamente e propor corte.
 
 | Fase | Milestone | Foco | Release | Dia (original, superado) |
@@ -80,6 +80,7 @@ Majors que tiram o projeto da linha da stack (Spring Boot 4.x, springdoc 3.x, Ja
 | Versão | Data | Conteúdo |
 |---|---|---|
 | **v1.0.0** | 20/09 | `ProdutoAtualizado` publicado após commit; F4 completo (listener SQS, idempotência, classificação transitório × definitivo, DLQ, métricas); `GET /portadores/{id}/completo` com resposta degradada; README profissional; release manual. |
+| **v1.2.1** | 21/09 | Aderência ao PDF do desafio: compose sobe sem `.env` (padrões dev-only) e Swagger com Authorize + exemplos válidos (#137); erros da API em português (#119, #134); `/actuator/prometheus` de fato exposto (#131, #135). |
 | **v1.2.0** | 21/09 | Segurança (ADR-009): posse de recurso em Portador e Cartão (#121) e log de 401/403 (#120). Estado de falha da emissão: `FALHOU` com motivo, registrado pelo Cartão e exposto no `/completo` e na UI (#117, ADR-006). |
 | **v1.1.0** | 21/09 | Frontend F7 (#54–#56, ADR-008); limite de tentativas no login (ADR-009); e os itens que tinham sido cortados do v1.0.0 e acabaram entrando: ArchUnit, scripts de caos, Postman + Newman, `e2e.yml`, contrato de evento via JSON Schema, logs JSON, CODEOWNERS/templates, ADR-006 e ADR-009. |
 
@@ -224,6 +225,7 @@ Regras verificadas por **ArchUnit**: `domain` não depende de nada externo; `app
 - `GlobalExceptionHandler` (`@RestControllerAdvice`) retornando **`ProblemDetail` (RFC 9457)** com `correlationId` e `timestamp`.
 - Hierarquia: `DomainException` → `RecursoNaoEncontradoException` (404), `ConflitoException` (409), `RegraNegocioException` (422); `DependenciaIndisponivelException` (503 + `Retry-After`).
 - Nunca vazar stack trace ou mensagem interna na resposta.
+- Mensagens ao cliente **sempre em português**: as do Bean Validation e as dos erros do Spring MVC ficam no `messages.properties` de cada serviço (sem `messages_en`). Restrição nova do Jakarta Validation sem tradução quebra `MensagensEmPortuguesTest`.
 - `POST` de criação → `201` + header `Location`.
 
 ### 6.4 Mensageria (SQS)
@@ -359,8 +361,7 @@ Aprovar / Solicitar mudanças / Precisa discussão
 ## 11. Docker e ambiente local
 
 ```bash
-cp .env.example .env
-docker compose up -d --build --wait     # sobe tudo
+docker compose up -d --build --wait     # sobe tudo (sem .env: o compose tem padrões dev-only; cp .env.example .env só para sobrescrever)
 docker compose ps
 docker compose logs -f cartao-service
 docker compose down -v                  # derruba e limpa volumes

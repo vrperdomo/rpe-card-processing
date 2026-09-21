@@ -245,4 +245,42 @@ class CartaoControllerTest {
                         .jwt(token -> token.subject("portador-service").claim("scope", "servico"))))
         .andExpect(status().isOk());
   }
+
+  // Idioma inglês no pedido de propósito: a resposta é sempre em português (issue #119).
+  @Test
+  void deveResponderEmPortuguesQuandoOStatusForOmitido() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/v1/cartoes/{id}/status", UUID.randomUUID())
+                .with(admin())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[?(@.field=='status')].message").value("é obrigatório"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOPortadorIdForOmitidoNaListagem() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/cartoes").with(admin()).header("Accept-Language", "en-US"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Parâmetro obrigatório ausente"))
+        .andExpect(
+            jsonPath("$.detail").value("O parâmetro obrigatório 'portadorId' não foi informado"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOPortadorIdNaoForUmUuid() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/cartoes")
+                .param("portadorId", "abc")
+                .with(admin())
+                .header("Accept-Language", "en-US"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Parâmetro inválido"))
+        .andExpect(
+            jsonPath("$.detail").value("O valor 'abc' não é válido para o parâmetro 'portadorId'"));
+  }
 }

@@ -40,6 +40,19 @@ Três microserviços independentes, cada um com seu próprio banco (database-per
 
 Os 3 serviços expõem OpenAPI/Swagger, health checks (Actuator) e métricas Prometheus.
 
+**Métricas (Prometheus).** `GET /actuator/prometheus` em cada serviço (8081, 8082, 8083), no formato de
+texto do Prometheus. Só o `health` é público: as métricas exigem o mesmo Bearer JWT dos demais
+endpoints (um scrape real precisaria configurar o token, ou liberar a rota numa rede interna).
+Métricas de negócio: `cartao_emitidos_total`, `cartao_dlq_enviados_total`,
+`cartao_emissao_falhas_total{tipo}`, `outbox_pendentes`, `outbox_falhas_total` e o hit/miss do cache
+de produto; os contadores só aparecem depois da primeira ocorrência.
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8082/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | jq -r .accessToken)
+curl -s http://localhost:8083/actuator/prometheus -H "Authorization: Bearer $TOKEN" | grep -E '^(cartao|jvm_memory_used)'
+```
+
 ## Arquitetura
 
 ```mermaid
@@ -96,9 +109,12 @@ portas) → `adapters/in|out` (web, mensageria, persistência, HTTP, cache, segu
 ## Setup em 1 comando
 
 ```bash
-cp .env.example .env
 docker compose up -d --build --wait
 ```
+
+Sem nenhum outro passo: cada variável tem um padrão de desenvolvimento no `docker-compose.yml` (os
+mesmos valores fictícios, marcados `dev-only-insecure`, do `.env.example`). Para trocar algum valor,
+`cp .env.example .env` e edite: o `.env`, se existir, sobrescreve os padrões.
 
 Isso sobe Postgres (3 bancos), Redis, LocalStack (filas + DLQs já provisionadas), os 3 serviços e o
 frontend (Nginx), aguardando todos os healthchecks ficarem `healthy`. Para derrubar:
@@ -133,6 +149,14 @@ curl -s -X POST http://localhost:8082/api/v1/auth/login \
 A resposta traz um `accessToken` (Bearer) a ser usado em `Authorization: Bearer <accessToken>` nas
 chamadas aos três serviços. Usuário seed só existe em ambiente local/demo (sem cadastro de usuários
 nesta fase).
+
+**Pelo Swagger** (é o caminho mais rápido para testar): (1) em `http://localhost:8082/swagger-ui.html`
+abra `POST /api/v1/auth/login` → *Try it out* → *Execute* (o corpo já vem preenchido com o usuário
+seed) e copie o `accessToken`; (2) clique em **Authorize** (o cadeado, no alto de qualquer um dos três
+Swaggers), cole só o token e confirme. O Swagger guarda o token ao recarregar a página. Os corpos de
+exemplo também vêm preenchidos com valores válidos (CPF com dígitos verificadores corretos, adulto);
+para cadastrar um portador falta apenas o `produtoId` de um produto `ATIVO`: crie um em
+`POST /api/v1/produtos` (Swagger do Produto) e copie o `id` da resposta.
 
 **No frontend** (`http://localhost:3000`, mesmas credenciais): o token fica **só em memória** — nunca
 em `localStorage`, `sessionStorage` nem cookie —, então recarregar a página pede novo login. As
@@ -224,6 +248,12 @@ Outras decisões relevantes (sem ADR dedicado, documentadas inline no código):
   timeout) combinado com o Retry+CircuitBreaker+TimeLimiter já existente na chamada HTTP ao Produto
   — decisão avaliada e mantida conscientemente (não é lacuna esquecida), ver
   [ADR-006](docs/adr/006-retry-dlq-idempotencia.md).
+- **Erros da API sempre em português, qualquer que seja o idioma do cliente** — cada serviço tem um
+  `messages.properties` (o `MessageSource` do Spring Boot, sem variante por idioma) com as mensagens
+  do Bean Validation (`não pode estar em branco`, `é obrigatório`...) e os títulos/detalhes dos erros
+  do próprio Spring MVC (corpo ilegível, parâmetro ausente, método não permitido). Sem isso o
+  Hibernate Validator cai no bundle inglês quando o navegador não manda `Accept-Language: pt-BR`. Um
+  teste por serviço falha se uma restrição padrão do Jakarta Validation ficar sem tradução.
 
 ## Garantia: cartão nunca é criado para produto inexistente
 
@@ -371,12 +401,13 @@ do merge; branch protection formal em `develop`/`main` ainda não foi configurad
 | `503` ao consultar cartão/produto | Circuito aberto (Produto/Cartão fora) | Aguarde `wait-duration-in-open-state` (10s) ou suba o serviço dependente |
 | Emissão nunca sai de `PENDENTE` | Outbox Relay desativado ou SQS fora | Confira `rpe.portador.outbox.relay.ativo` e `docker compose ps localstack` |
 | Erro de `ddl-auto: validate` no boot | Migração Flyway com tipo de coluna incompatível com o campo JPA (`CHAR` vs `VARCHAR`) | Confira se toda coluna mapeada para `String` usa `VARCHAR` na migração |
-| `docker compose config` falha | Variável de ambiente ausente no `.env` | Rode `cp .env.example .env` e ajuste os valores |
+| `docker compose config` reclama de sintaxe | `.env` próprio com valor inválido (ex.: `$` sem escape) | Corrija o `.env` ou apague-o: os padrões de desenvolvimento voltam a valer |
 
 ## Release
 
 | Versão | Conteúdo |
 |---|---|
+| **v1.2.1** | Aderência ao desafio: `docker compose up -d --build --wait` sobe o ambiente **sem `.env`** (padrões de desenvolvimento no compose) e os 3 Swaggers ganham o botão **Authorize** (Bearer JWT) e exemplos válidos. Erros da API sempre em português (Bean Validation e Spring MVC). `/actuator/prometheus` passa a existir de fato |
 | **v1.2.0** | Segurança: posse de recurso (só o dono acessa portador e cartão; `404` idêntico ao de id inexistente) e log de 401/403 (ADR-009). Estado de falha da emissão: o Cartão registra a falha quando a mensagem vai para a DLQ e o `/completo` e a tela do portador passam a mostrar `FALHOU` com motivo, em vez de `PENDENTE` para sempre (ADR-006) |
 | **v1.1.0** | Frontend React (login, cadastro de portador, detalhe com polling da emissão), limite de tentativas no login (429), logs estruturados em JSON, contratos de evento em JSON Schema, ArchUnit, scripts de caos, Postman/Newman, workflow e2e |
 | **v1.0.0** | Backend completo: 3 microsserviços, Outbox + SQS com retry/DLQ e idempotência, cache Redis, Resilience4j, Docker Compose, README e ADRs |

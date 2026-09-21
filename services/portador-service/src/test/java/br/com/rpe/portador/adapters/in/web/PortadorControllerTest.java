@@ -459,4 +459,93 @@ class PortadorControllerTest {
         .andExpect(jsonPath("$.falhaEmissao.motivo").value("Produto inexistente ou não ATIVO"))
         .andExpect(jsonPath("$.falhaEmissao.ocorridaEm").value("2026-09-19T12:00:00Z"));
   }
+
+  // Idioma inglês no pedido de propósito: a resposta é sempre em português (issue #119).
+  @Test
+  void deveResponderOsErrosDeCampoEmPortuguesMesmoComIdiomaIngles() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/portadores")
+                .with(admin())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='nome')].message").value("não pode estar em branco"))
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='cpf')].message").value("não pode estar em branco"))
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='dataNascimento')].message").value("é obrigatório"))
+        .andExpect(jsonPath("$.errors[?(@.field=='produtoId')].message").value("é obrigatório"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoADataDeNascimentoNaoEPassada() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/portadores")
+                .with(admin())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo(CPF_VALIDO, "2999-01-01", PRODUTO_ID.toString())))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errors[?(@.field=='dataNascimento')].message")
+                .value("deve ser uma data no passado"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOCorpoForIlegivel() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/portadores")
+                .with(admin())
+                .header("Accept-Language", "en-US")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ nome"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Requisição ilegível"))
+        .andExpect(
+            jsonPath("$.detail")
+                .value(org.hamcrest.Matchers.containsString("corpo da requisição")));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOIdentificadorNaoForUmUuid() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/portadores/{id}", "nao-e-uuid")
+                .with(admin())
+                .header("Accept-Language", "en-US"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Parâmetro inválido"))
+        .andExpect(
+            jsonPath("$.detail").value("O valor 'nao-e-uuid' não é válido para o parâmetro 'id'"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOMetodoNaoForSuportado() throws Exception {
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                    "/api/v1/portadores/{id}", UUID.randomUUID())
+                .with(admin())
+                .header("Accept-Language", "en-US"))
+        .andExpect(status().isMethodNotAllowed())
+        .andExpect(jsonPath("$.title").value("Método não permitido"))
+        .andExpect(jsonPath("$.detail").value("O método 'DELETE' não é suportado neste endereço"));
+  }
+
+  @Test
+  void deveResponderEmPortuguesQuandoOTipoDeConteudoNaoForSuportado() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/portadores")
+                .with(admin())
+                .header("Accept-Language", "en-US")
+                .content("{}"))
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.title").value("Tipo de conteúdo não suportado"));
+  }
 }
