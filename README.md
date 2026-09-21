@@ -271,8 +271,14 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
 [ADR-009](docs/adr/009-revisao-seguranca-owasp.md). Lacunas reais assumidas conscientemente como
 backlog (risco baixo no contexto de um desafio local, sem exposição pública ou multiusuário real):
 sem autorização por posse de recurso (qualquer JWT válido acessa qualquer `portadorId`/`cartaoId`),
-sem rate limiting em `/api/v1/auth/login`, sem logging de tentativas de autenticação falhas, e CORS
-documentado mas não implementado em código (por ausência do frontend nesta entrega).
+401/403 de endpoints protegidos sem log, e CORS documentado mas não implementado em código (por
+ausência do frontend nesta entrega).
+
+**Login com limite de tentativas:** após 5 tentativas em 1 minuto sem sucesso, a origem (IP) recebe
+`429 Too Many Requests` com `Retry-After`, sem que a senha seja sequer verificada. Login correto
+zera a contagem e outra origem não é afetada. Toda falha é logada (motivo + origem, nunca o
+username digitado). Ajustável por `rpe.auth.login-limite.*` (ver ADR-009, atualização de
+21/09/2026).
 
 ## Testes
 

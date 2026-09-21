@@ -4,6 +4,7 @@ import br.com.rpe.portador.adapters.in.web.dto.ErroCampoResponse;
 import br.com.rpe.portador.domain.exception.ConflitoException;
 import br.com.rpe.portador.domain.exception.CredenciaisInvalidasException;
 import br.com.rpe.portador.domain.exception.DependenciaIndisponivelException;
+import br.com.rpe.portador.domain.exception.LimiteTentativasExcedidoException;
 import br.com.rpe.portador.domain.exception.RecursoNaoEncontradoException;
 import br.com.rpe.portador.domain.exception.RegraNegocioException;
 import java.util.List;
@@ -36,6 +37,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         .body(
             problemDetailFactory.criar(
                 HttpStatus.UNAUTHORIZED, "Não autenticado", ex.getMessage()));
+  }
+
+  @ExceptionHandler(LimiteTentativasExcedidoException.class)
+  public ResponseEntity<ProblemDetail> tratarLimiteDeTentativas(
+      LimiteTentativasExcedidoException ex) {
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfter().toSeconds() + 1))
+        .body(
+            problemDetailFactory.criar(
+                HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas", ex.getMessage()));
   }
 
   @ExceptionHandler(RegraNegocioException.class)
