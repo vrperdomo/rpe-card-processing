@@ -191,8 +191,9 @@ escolhido numa lista; ao cadastrar, abre o **detalhe do portador**, que consulta
 `GET /portadores/{id}/completo` sozinho (a cada 2 s enquanto a emissão está `PENDENTE`) até o cartão
 aparecer, com o número sempre mascarado. Se o serviço de Cartão ou o de Produto estiver fora do ar,
 a tela continua mostrando o que tem, com os `avisos` da resposta degradada, e passa a consultar mais
-devagar (5 s). Como o backend não tem estado de falha na emissão (uma mensagem que vai para a DLQ
-continua `PENDENTE`), o polling **desiste após 2 minutos** e explica; "Atualizar" consulta de novo
+devagar (5 s). Se a mensagem de emissão for para a DLQ, a tela mostra **"Não foi possível emitir o
+cartão"** com o motivo e o horário (estado `FALHOU`, final: não há polling). Enquanto a emissão está
+`PENDENTE` mas demora, o polling **desiste após 2 minutos** e explica; "Atualizar" consulta de novo
 a qualquer momento. Não há listagem de portadores na API, então o detalhe também abre pelo
 identificador na página inicial. Cadastro de produto continua pelo Swagger/Postman.
 

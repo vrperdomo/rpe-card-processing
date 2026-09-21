@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { buscarPortadorCompleto, cadastrarPortador } from './portadoresApi'
-import { intervaloDePolling, POLLING } from './polling'
+import { emissaoEmAndamento, intervaloDePolling, POLLING } from './polling'
 
 export function useCadastrarPortador() {
   return useMutation({ mutationFn: cadastrarPortador })
@@ -31,6 +31,6 @@ export function usePortadorCompleto(id: string | undefined) {
       esgotadoRef.current ? false : intervaloDePolling(query.state.data?.emissao),
   })
 
-  const emissaoIncompleta = consulta.data !== undefined && consulta.data.emissao !== 'CONCLUIDA'
-  return { ...consulta, pollingEsgotado: pollingEsgotado && emissaoIncompleta }
+  // FALHOU não "esgota" o polling: ele nem começa, o estado já é final.
+  return { ...consulta, pollingEsgotado: pollingEsgotado && emissaoEmAndamento(consulta.data?.emissao) }
 }

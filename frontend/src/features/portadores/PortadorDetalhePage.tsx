@@ -73,7 +73,7 @@ function PortadorDetalhe({ id }: { id: string | undefined }) {
     )
   }
 
-  const { portador, cartao, produto, emissao, avisos } = consulta.data
+  const { portador, cartao, produto, emissao, falhaEmissao, avisos } = consulta.data
   return (
     <section>
       <Link to="/" className="text-sm text-indigo-700 hover:underline dark:text-indigo-300">
@@ -92,7 +92,11 @@ function PortadorDetalhe({ id }: { id: string | undefined }) {
       </div>
 
       <div className="mt-4 space-y-4">
-        <EmissaoStatus emissao={emissao} pollingEsgotado={consulta.pollingEsgotado} />
+        <EmissaoStatus
+          emissao={emissao}
+          pollingEsgotado={consulta.pollingEsgotado}
+          falha={falhaEmissao}
+        />
 
         {consulta.isError && (
           <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200">
@@ -139,7 +143,7 @@ function PortadorDetalhe({ id }: { id: string | undefined }) {
               <Dado nome="Situação">{rotulo(cartao.status)}</Dado>
             </>
           ) : (
-            <Dado nome="Cartão">Ainda não emitido</Dado>
+            <Dado nome="Cartão">{emissao === 'FALHOU' ? 'Não emitido' : 'Ainda não emitido'}</Dado>
           )}
         </Bloco>
       </div>

@@ -86,7 +86,7 @@ Majors que tiram o projeto da linha da stack (Spring Boot 4.x, springdoc 3.x, Ja
 - `.devcontainer` (Codespaces) e demo gravada — o Docker Compose local já cobre a demonstração.
 - `docker-publish.yml` (GHCR) e `release.yml` — a release segue manual (README, seção Release).
 - Paralelização das chamadas do `/completo` (hoje sequenciais: Portador → Cartão → Produto).
-- Estado de falha da emissão (uma mensagem na DLQ deixa o portador `PENDENTE`) e `GET /portadores` (listagem).
+- `GET /portadores` (listagem). O estado de falha da emissão (`FALHOU`, #117) foi entregue no Cartão, no Portador e na UI.
 - `/api/v1/admin/dlq` (Could); painel de saúde (#57) e Playwright (#58) no frontend.
 - Branch protection em `develop` e `main` (#65).
 - Segurança (ADR-009): as lacunas nomeadas foram todas fechadas (log de 401/403 #120 e posse de recurso #121). Sobra só a limitação assumida de um único usuário seed.

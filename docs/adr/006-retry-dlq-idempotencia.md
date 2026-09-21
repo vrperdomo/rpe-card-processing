@@ -128,3 +128,10 @@ Cartão registrou não dá para afirmar `PENDENTE` nem `FALHOU`. Um `404` de "se
 estado normal e não conta para o `CircuitBreaker` (que só registra erro de conexão e 5xx). Custo
 assumido: enquanto o portador está `PENDENTE`, cada consulta faz duas chamadas sequenciais ao
 Cartão (a paralelização do `/completo` segue em backlog, #115).
+
+**UI (PR 3 do #117).** A tela de detalhe do portador mostra "Não foi possível emitir o cartão" com o
+motivo e o horário quando `emissao` é `FALHOU`. É um estado final: não há polling (o backend
+não vai mudar sozinho) e o teto de 2 minutos, que só faz sentido para `PENDENTE`, não se aplica.
+"Atualizar" continua disponível: se a DLQ for reprocessada e a emissão der certo, a falha registrada
+é apagada e a tela passa a `CONCLUIDA`. O motivo é exibido como texto (React escapa), sem
+interpretar HTML.

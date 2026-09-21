@@ -219,3 +219,99 @@ describe('detalhe do portador: erros', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
+
+describe('detalhe do portador: falha na emissão', () => {
+  const FALHA = { motivo: 'Produto inexistente ou não ATIVO', ocorridaEm: '2026-09-21T12:00:00Z' }
+
+  it('deveMostrarOMotivoEADataQuandoAEmissaoFalhou', async () => {
+    rotearFetch([rotaCompleto(() => portadorCompleto({ emissao: 'FALHOU', falhaEmissao: FALHA }))])
+
+    renderApp(`/portadores/${ID_PORTADOR}`)
+
+    expect(await screen.findByText('Não foi possível emitir o cartão')).toBeInTheDocument()
+    expect(screen.getByText('Motivo: Produto inexistente ou não ATIVO')).toBeInTheDocument()
+    expect(screen.getByText(/Ocorrido em 21\/09\/2026/)).toBeInTheDocument()
+    expect(screen.getByText('Não emitido')).toBeInTheDocument()
+    expect(screen.queryByText('Ainda não emitido')).not.toBeInTheDocument()
+  })
+
+  it('deveAnunciarAFalhaComoAlertaParaLeitoresDeTela', async () => {
+    rotearFetch([rotaCompleto(() => portadorCompleto({ emissao: 'FALHOU', falhaEmissao: FALHA }))])
+
+    renderApp(`/portadores/${ID_PORTADOR}`)
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent('Não foi possível emitir o cartão')
+  })
+
+  it('naoDeveFazerPollingQuandoAEmissaoFalhouPoisOEstadoEFinal', async () => {
+    comRelogioFalso()
+    const fetchSpy = rotearFetch([
+      rotaCompleto(() => portadorCompleto({ emissao: 'FALHOU', falhaEmissao: FALHA })),
+    ])
+
+    renderApp(`/portadores/${ID_PORTADOR}`)
+    await screen.findByText('Não foi possível emitir o cartão')
+    await avancar(POLLING.pendenteMs * 5)
+
+    expect(chamadasPara(fetchSpy, CAMINHO)).toHaveLength(1)
+  })
+
+  it('naoDeveDizerQueAEmissaoEstaDemorandoDepoisDoLimiteQuandoFalhou', async () => {
+    comRelogioFalso()
+    rotearFetch([rotaCompleto(() => portadorCompleto({ emissao: 'FALHOU', falhaEmissao: FALHA }))])
+
+    renderApp(`/portadores/${ID_PORTADOR}`)
+    await screen.findByText('Não foi possível emitir o cartão')
+    await avancar(POLLING.limiteMs + POLLING.pendenteMs)
+
+    expect(screen.queryByText(/demorando mais que o esperado/)).not.toBeInTheDocument()
+    expect(screen.getByText('Não foi possível emitir o cartão')).toBeInTheDocument()
+  })
+
+  it('deveMostrarOCartaoQuandoAtualizarEUmReprocessamentoDeuCerto', async () => {
+    let respostas = 0
+    rotearFetch([
+      rotaCompleto(() => {
+        respostas += 1
+        return respostas === 1
+          ? portadorCompleto({ emissao: 'FALHOU', falhaEmissao: FALHA })
+          : portadorCompleto({ emissao: 'CONCLUIDA', cartao: CARTAO_EMITIDO })
+      }),
+    ])
+
+    const { user } = renderApp(`/portadores/${ID_PORTADOR}`)
+    await screen.findByText('Não foi possível emitir o cartão')
+
+    await user.click(screen.getByRole('button', { name: 'Atualizar' }))
+
+    expect(await screen.findByText('Cartão emitido')).toBeInTheDocument()
+    expect(screen.queryByText('Não foi possível emitir o cartão')).not.toBeInTheDocument()
+    expect(screen.getByText('**** **** **** 6707')).toBeInTheDocument()
+  })
+
+  it('deveExibirOMotivoComoTextoSemInterpretarHtml', async () => {
+    rotearFetch([
+      rotaCompleto(() =>
+        portadorCompleto({
+          emissao: 'FALHOU',
+          falhaEmissao: { motivo: '<img src=x onerror=alert(1)>', ocorridaEm: FALHA.ocorridaEm },
+        }),
+      ),
+    ])
+
+    renderApp(`/portadores/${ID_PORTADOR}`)
+
+    expect(await screen.findByText('Motivo: <img src=x onerror=alert(1)>')).toBeInTheDocument()
+    expect(document.querySelector('img')).toBeNull()
+  })
+
+  it('deveMostrarAFalhaMesmoSemDetalhesQuandoOBackendNaoEnviouFalhaEmissao', async () => {
+    rotearFetch([rotaCompleto(() => portadorCompleto({ emissao: 'FALHOU' }))])
+
+    renderApp(`/portadores/${ID_PORTADOR}`)
+
+    expect(await screen.findByText('Não foi possível emitir o cartão')).toBeInTheDocument()
+    expect(screen.queryByText(/^Motivo:/)).not.toBeInTheDocument()
+  })
+})
