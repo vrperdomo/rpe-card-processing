@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Navigate, useLocation } from 'react-router-dom'
+import { classeBotaoPrimario, classeCampo } from '../../components/estilos'
 import { codigoDeSuporte, mensagemDeErro } from '../../lib/api/mensagemDeErro'
 import type { MotivoSaida } from '../../lib/auth/authStore'
 import { useAuth } from '../../lib/auth/useAuth'
@@ -12,11 +13,6 @@ const AVISOS_DE_SAIDA: Partial<Record<MotivoSaida, string>> = {
   expirada: 'Sua sessão expirou. Entre novamente para continuar.',
   'nao-autorizado': 'Sua sessão não é mais válida. Entre novamente para continuar.',
 }
-
-const classeCampo =
-  'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm ' +
-  'focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/30 ' +
-  'aria-[invalid=true]:border-red-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100'
 
 export default function LoginPage() {
   const { autenticado, motivoSaida } = useAuth()
@@ -118,7 +114,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={login.isPending}
-            className="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600/50 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`w-full ${classeBotaoPrimario}`}
           >
             {login.isPending ? 'Entrando…' : 'Entrar'}
           </button>

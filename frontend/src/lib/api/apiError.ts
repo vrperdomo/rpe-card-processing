@@ -5,6 +5,13 @@ export interface ProblemDetailBody {
   status?: number
   detail?: string
   correlationId?: string
+  // Presente nos 400 de validação: um item por campo inválido.
+  errors?: unknown
+}
+
+export interface ErroDeCampo {
+  readonly field: string
+  readonly message: string
 }
 
 // status 0 = a requisição nem chegou a ter resposta (rede fora, DNS, CORS, abortada).
@@ -15,6 +22,7 @@ export class ApiError extends Error {
   // Identificador para o suporte achar a requisição nos logs dos serviços.
   readonly correlationId: string | undefined
   readonly retryAfterSegundos: number | undefined
+  readonly errosDeCampo: readonly ErroDeCampo[]
 
   constructor(init: {
     status: number
@@ -22,6 +30,7 @@ export class ApiError extends Error {
     detalhe?: string
     correlationId?: string
     retryAfterSegundos?: number
+    errosDeCampo?: readonly ErroDeCampo[]
   }) {
     super(init.detalhe ?? init.titulo ?? `Erro HTTP ${init.status}`)
     this.name = 'ApiError'
@@ -30,6 +39,7 @@ export class ApiError extends Error {
     this.detalhe = init.detalhe
     this.correlationId = init.correlationId
     this.retryAfterSegundos = init.retryAfterSegundos
+    this.errosDeCampo = init.errosDeCampo ?? []
   }
 
   get semConexao(): boolean {
@@ -42,4 +52,14 @@ export function lerRetryAfter(valor: string | null): number | undefined {
   if (valor === null) return undefined
   const segundos = Number.parseInt(valor, 10)
   return Number.isFinite(segundos) && segundos >= 0 ? segundos : undefined
+}
+
+// Aceita só itens no formato {field, message}; o resto é ignorado em vez de quebrar a tela.
+export function lerErrosDeCampo(valor: unknown): ErroDeCampo[] {
+  if (!Array.isArray(valor)) return []
+  return valor.flatMap((item: unknown) => {
+    if (typeof item !== 'object' || item === null) return []
+    const { field, message } = item as Record<string, unknown>
+    return typeof field === 'string' && typeof message === 'string' ? [{ field, message }] : []
+  })
 }
