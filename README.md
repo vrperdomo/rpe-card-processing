@@ -377,6 +377,7 @@ do merge; branch protection formal em `develop`/`main` ainda não foi configurad
 
 | Versão | Conteúdo |
 |---|---|
+| **v1.2.0** | Segurança: posse de recurso (só o dono acessa portador e cartão; `404` idêntico ao de id inexistente) e log de 401/403 (ADR-009). Estado de falha da emissão: o Cartão registra a falha quando a mensagem vai para a DLQ e o `/completo` e a tela do portador passam a mostrar `FALHOU` com motivo, em vez de `PENDENTE` para sempre (ADR-006) |
 | **v1.1.0** | Frontend React (login, cadastro de portador, detalhe com polling da emissão), limite de tentativas no login (429), logs estruturados em JSON, contratos de evento em JSON Schema, ArchUnit, scripts de caos, Postman/Newman, workflow e2e |
 | **v1.0.0** | Backend completo: 3 microsserviços, Outbox + SQS com retry/DLQ e idempotência, cache Redis, Resilience4j, Docker Compose, README e ADRs |
 
