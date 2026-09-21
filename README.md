@@ -224,6 +224,12 @@ Outras decisões relevantes (sem ADR dedicado, documentadas inline no código):
   timeout) combinado com o Retry+CircuitBreaker+TimeLimiter já existente na chamada HTTP ao Produto
   — decisão avaliada e mantida conscientemente (não é lacuna esquecida), ver
   [ADR-006](docs/adr/006-retry-dlq-idempotencia.md).
+- **Erros da API sempre em português, qualquer que seja o idioma do cliente** — cada serviço tem um
+  `messages.properties` (o `MessageSource` do Spring Boot, sem variante por idioma) com as mensagens
+  do Bean Validation (`não pode estar em branco`, `é obrigatório`...) e os títulos/detalhes dos erros
+  do próprio Spring MVC (corpo ilegível, parâmetro ausente, método não permitido). Sem isso o
+  Hibernate Validator cai no bundle inglês quando o navegador não manda `Accept-Language: pt-BR`. Um
+  teste por serviço falha se uma restrição padrão do Jakarta Validation ficar sem tradução.
 
 ## Garantia: cartão nunca é criado para produto inexistente
 
