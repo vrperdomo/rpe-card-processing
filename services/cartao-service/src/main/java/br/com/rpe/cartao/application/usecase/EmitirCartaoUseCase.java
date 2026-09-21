@@ -1,6 +1,7 @@
 package br.com.rpe.cartao.application.usecase;
 
 import br.com.rpe.cartao.application.port.out.CartaoRepositorio;
+import br.com.rpe.cartao.application.port.out.EmissaoFalhaRepositorio;
 import br.com.rpe.cartao.application.port.out.MensagemProcessadaRepositorio;
 import br.com.rpe.cartao.application.port.out.ProdutoClient;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
@@ -32,6 +33,7 @@ public class EmitirCartaoUseCase {
   private static final Logger log = LoggerFactory.getLogger(EmitirCartaoUseCase.class);
 
   private final CartaoRepositorio cartaoRepositorio;
+  private final EmissaoFalhaRepositorio emissaoFalhaRepositorio;
   private final MensagemProcessadaRepositorio mensagemProcessadaRepositorio;
   private final ProdutoClient produtoClient;
   private final MeterRegistry meterRegistry;
@@ -39,11 +41,13 @@ public class EmitirCartaoUseCase {
 
   public EmitirCartaoUseCase(
       CartaoRepositorio cartaoRepositorio,
+      EmissaoFalhaRepositorio emissaoFalhaRepositorio,
       MensagemProcessadaRepositorio mensagemProcessadaRepositorio,
       ProdutoClient produtoClient,
       MeterRegistry meterRegistry,
       Clock clock) {
     this.cartaoRepositorio = cartaoRepositorio;
+    this.emissaoFalhaRepositorio = emissaoFalhaRepositorio;
     this.mensagemProcessadaRepositorio = mensagemProcessadaRepositorio;
     this.produtoClient = produtoClient;
     this.meterRegistry = meterRegistry;
@@ -86,6 +90,8 @@ public class EmitirCartaoUseCase {
             donoDoEvento(criadoPor, eventId),
             agora);
     cartaoRepositorio.salvar(cartao);
+    // Uma falha registrada antes (ex.: reprocessamento da DLQ) deixa de valer: o cartão existe.
+    emissaoFalhaRepositorio.removerPorPortadorId(portadorId);
     mensagemProcessadaRepositorio.marcarProcessada(eventId, agora);
     meterRegistry.counter("cartao.emitidos").increment();
   }
@@ -97,8 +103,7 @@ public class EmitirCartaoUseCase {
     if (criadoPor == null || criadoPor.isBlank()) {
       log.warn(
           "Evento {} sem criadoPor (anterior ao #121): cartão emitido com dono legado", eventId);
-      return Solicitante.DONO_LEGADO;
     }
-    return criadoPor;
+    return Solicitante.donoOuLegado(criadoPor);
   }
 }

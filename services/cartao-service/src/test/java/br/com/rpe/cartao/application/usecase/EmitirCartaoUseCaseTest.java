@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.rpe.cartao.application.port.out.CartaoRepositorio;
+import br.com.rpe.cartao.application.port.out.EmissaoFalhaRepositorio;
 import br.com.rpe.cartao.application.port.out.MensagemProcessadaRepositorio;
 import br.com.rpe.cartao.application.port.out.ProdutoClient;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
@@ -31,13 +32,20 @@ class EmitirCartaoUseCaseTest {
   private static final Clock RELOGIO = Clock.fixed(AGORA, ZoneOffset.UTC);
 
   private final CartaoRepositorio cartaoRepositorio = mock(CartaoRepositorio.class);
+  private final EmissaoFalhaRepositorio emissaoFalhaRepositorio =
+      mock(EmissaoFalhaRepositorio.class);
   private final MensagemProcessadaRepositorio mensagemProcessadaRepositorio =
       mock(MensagemProcessadaRepositorio.class);
   private final ProdutoClient produtoClient = mock(ProdutoClient.class);
   private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
   private final EmitirCartaoUseCase useCase =
       new EmitirCartaoUseCase(
-          cartaoRepositorio, mensagemProcessadaRepositorio, produtoClient, meterRegistry, RELOGIO);
+          cartaoRepositorio,
+          emissaoFalhaRepositorio,
+          mensagemProcessadaRepositorio,
+          produtoClient,
+          meterRegistry,
+          RELOGIO);
 
   private ProdutoDto produtoAtivo(UUID produtoId) {
     return new ProdutoDto(produtoId, "Gold", "GOLD", "453201", StatusProdutoExterno.ATIVO);
@@ -146,5 +154,29 @@ class EmitirCartaoUseCaseTest {
   @Test
   void deveEmitirComDonoLegadoQuandoCriadoPorEstaEmBranco() {
     assertThat(emitirECapturar("  ").getCriadoPor()).isEqualTo(Solicitante.DONO_LEGADO);
+  }
+
+  @Test
+  void deveApagarAFalhaRegistradaQuandoACartaoEEmitido() {
+    UUID portadorId = UUID.randomUUID();
+    UUID produtoId = UUID.randomUUID();
+    when(produtoClient.buscarPorId(produtoId)).thenReturn(Optional.of(produtoAtivo(produtoId)));
+
+    useCase.executar(UUID.randomUUID(), portadorId, produtoId, "VICTOR", "admin");
+
+    verify(emissaoFalhaRepositorio).removerPorPortadorId(portadorId);
+  }
+
+  @Test
+  void naoDeveMexerNasFalhasQuandoAEmissaoNaoAcontece() {
+    UUID portadorId = UUID.randomUUID();
+    UUID produtoId = UUID.randomUUID();
+    when(produtoClient.buscarPorId(produtoId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> useCase.executar(UUID.randomUUID(), portadorId, produtoId, "VICTOR", "admin"))
+        .isInstanceOf(RegraNegocioException.class);
+
+    verify(emissaoFalhaRepositorio, never()).removerPorPortadorId(any());
   }
 }

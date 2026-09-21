@@ -258,7 +258,7 @@ Regras verificadas por **ArchUnit**: `domain` não depende de nada externo; `app
 ### 6.8 Observabilidade
 - Filtro de `X-Correlation-Id` (gera se ausente) → MDC → propagado em chamadas HTTP e atributos SQS.
 - Logs estruturados (JSON) com `service`, `correlationId`, `eventId`.
-- Métricas custom: `outbox.pendentes`, `outbox.falhas`, `cartao.emitidos`, `cartao.dlq.enviados`, `produto.cache.hit/miss`.
+- Métricas custom: `outbox.pendentes`, `outbox.falhas`, `cartao.emitidos`, `cartao.dlq.enviados`, `cartao.emissao.falhas`, `produto.cache.hit/miss`.
 - Actuator: `health` (liveness/readiness), `info`, `metrics`, `prometheus`.
 
 ---

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import br.com.rpe.cartao.IntegrationTestBase;
 import br.com.rpe.cartao.adapters.out.http.ProdutoHttpClient;
 import br.com.rpe.cartao.application.port.out.CartaoRepositorio;
+import br.com.rpe.cartao.application.port.out.EmissaoFalhaRepositorio;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
 import br.com.rpe.cartao.application.port.out.StatusProdutoExterno;
 import br.com.rpe.cartao.domain.exception.DependenciaIndisponivelException;
@@ -73,6 +74,7 @@ class CartaoEmissaoSolicitadaListenerIT extends IntegrationTestBase {
   @Autowired private SqsAsyncClient sqsAsyncClient;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private CartaoRepositorio cartaoRepositorio;
+  @Autowired private EmissaoFalhaRepositorio emissaoFalhaRepositorio;
   @MockitoBean private ProdutoHttpClient produtoHttpClient;
 
   // Evento no formato anterior ao #121: sem data.criadoPor.
@@ -269,5 +271,50 @@ class CartaoEmissaoSolicitadaListenerIT extends IntegrationTestBase {
     enviar(corpoValido(eventId, portadorId, produtoId, "VICTOR RODRIGUES"));
 
     assertThat(donoDoCartaoEmitido(portadorId, produtoId)).isEqualTo("legado");
+  }
+
+  @Test
+  void deveRegistrarAFalhaDeEmissaoQuandoProdutoInexistente() {
+    UUID portadorId = UUID.randomUUID();
+    UUID produtoId = UUID.randomUUID();
+    when(produtoHttpClient.buscarPorId(produtoId)).thenReturn(Optional.empty());
+
+    enviar(corpoValido(UUID.randomUUID(), portadorId, produtoId, "VICTOR RODRIGUES", "admin"));
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              var falha = emissaoFalhaRepositorio.buscarPorPortadorId(portadorId);
+              assertThat(falha).isPresent();
+              assertThat(falha.get().criadoPor()).isEqualTo("admin");
+              assertThat(falha.get().produtoId()).isEqualTo(produtoId);
+              assertThat(falha.get().motivo()).contains("inexistente");
+            });
+    assertThat(cartaoRepositorio.existePorPortadorEProduto(portadorId, produtoId)).isFalse();
+  }
+
+  @Test
+  void deveApagarAFalhaRegistradaQuandoUmaNovaEntregaEmiteOCartao() {
+    UUID portadorId = UUID.randomUUID();
+    UUID produtoId = UUID.randomUUID();
+    emissaoFalhaRepositorio.registrar(
+        new br.com.rpe.cartao.domain.EmissaoFalha(
+            portadorId, produtoId, "falha anterior", "admin", java.time.Instant.now()));
+    when(produtoHttpClient.buscarPorId(produtoId))
+        .thenReturn(
+            Optional.of(
+                new ProdutoDto(produtoId, "Gold", "GOLD", "453201", StatusProdutoExterno.ATIVO)));
+
+    enviar(corpoValido(UUID.randomUUID(), portadorId, produtoId, "VICTOR RODRIGUES", "admin"));
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              assertThat(cartaoRepositorio.existePorPortadorEProduto(portadorId, produtoId))
+                  .isTrue();
+              assertThat(emissaoFalhaRepositorio.buscarPorPortadorId(portadorId)).isEmpty();
+            });
   }
 }
