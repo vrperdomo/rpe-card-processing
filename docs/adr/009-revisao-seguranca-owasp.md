@@ -94,11 +94,20 @@ tabelas acima ficam como registro da revisão original; o estado atual é:
     `X-Forwarded-For` só quando o proxy está em faixa privada; um cliente externo não consegue
     forjar o cabeçalho para escapar do limite, mas quem acessa a porta 8082 pela rede do Docker
     (faixa privada) ainda pode — aceitável em ambiente local.
-- **Lacuna 3 (A09) — corrigida em parte.** Toda falha de login gera um `WARN`
+- **Lacuna 3 (A09) — corrigida.** Toda falha de login gera um `WARN`
   (`motivo=usuario-inexistente|senha-incorreta`, `origem=<ip>`) e o bloqueio de uma origem também.
   O username digitado **não** é logado (entrada do cliente: injeção de log, e pode ser um CPF).
-  Continua em aberto: `JwtAuthEntryPoint`/`JwtAccessDeniedHandler` (401/403 em endpoints
-  protegidos) ainda não logam.
+  Os 401/403 de endpoints protegidos também deixam rastro, nos 3 serviços:
+  - `JwtAuthEntryPoint` (401): `WARN` com `metodo`, `caminho`, `origem` e `motivo` (nome da classe
+    da exceção do Spring Security: token ausente, expirado, assinatura inválida...).
+  - `JwtAccessDeniedHandler` (403): `WARN` com `metodo`, `caminho`, `origem` e `usuario` (o `sub`
+    do JWT, já validado por assinatura, `iss` e `aud`; `desconhecido` se não houver principal).
+  - **Nunca** entram no log: o token, a query string (pode carregar dado sensível) e a mensagem da
+    exceção (o Spring a monta com trechos do token enviado pelo cliente). Os testes verificam isso.
+  - Alternativa descartada: um listener de eventos de autenticação do Spring Security
+    (`AuthenticationFailureBadCredentialsEvent` etc.). Os entry points já são o ponto único por
+    onde todo 401/403 passa e já existem nos 3 serviços; logar ali não exige componente novo nem
+    depende de o Spring publicar o evento para cada tipo de falha.
 - **Lacuna 4 (A05) — resolvida pelo [ADR-008](008-frontend-react-nginx.md).** Com o Nginx do
   frontend como proxy reverso o browser só fala com uma origem, então nenhum serviço precisa de
   CORS e o padrão do Spring (negar cross-origin) é o desejado. Não há lista de origens a manter.

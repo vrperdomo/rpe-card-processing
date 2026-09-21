@@ -89,7 +89,7 @@ Majors que tiram o projeto da linha da stack (Spring Boot 4.x, springdoc 3.x, Ja
 - Estado de falha da emissão (uma mensagem na DLQ deixa o portador `PENDENTE`) e `GET /portadores` (listagem).
 - `/api/v1/admin/dlq` (Could); painel de saúde (#57) e Playwright (#58) no frontend.
 - Branch protection em `develop` e `main` (#65).
-- Lacunas de segurança nomeadas no ADR-009: autorização por posse de recurso e log de 401/403.
+- Lacuna de segurança nomeada no ADR-009: autorização por posse de recurso (#121). O log de 401/403 (#120) foi fechado.
 
 **Descartado por decisão (não é backlog):** backoff exponencial **entre** entregas SQS — usa-se o `visibility timeout` nativo + `maxReceiveCount` até a DLQ, mais o retry do cliente HTTP (ADR-006).
 
