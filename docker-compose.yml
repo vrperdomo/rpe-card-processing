@@ -1,3 +1,7 @@
+# `docker compose up -d --build --wait` sobe o ambiente inteiro SEM nenhum outro passo (desafio
+# técnico, seção 3: "um único comando"). Toda variável tem um padrão de DESENVOLVIMENTO, com os mesmos
+# valores fictícios do .env.example (todos marcados "dev-only-insecure"); um .env, se existir, os
+# sobrescreve. Nada aqui serve para produção: lá, segredos reais vêm do ambiente, nunca deste arquivo.
 name: rpe-card-processing
 
 services:
@@ -55,9 +59,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/produto_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rpe}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rpe}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-troque-em-producao-32chars}
+      JWT_ISSUER: ${JWT_ISSUER:-https://portador-service.rpe.local}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-rpe-api}
       AWS_SQS_ENDPOINT: http://localstack:4566
     ports:
       - "${PRODUTO_SERVICE_PORT:-8081}:8081"
@@ -84,9 +88,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/portador_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rpe}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rpe}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-troque-em-producao-32chars}
+      JWT_ISSUER: ${JWT_ISSUER:-https://portador-service.rpe.local}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-rpe-api}
       PRODUTO_SERVICE_URL: http://produto-service:8081
       CARTAO_SERVICE_URL: http://cartao-service:8083
       AWS_SQS_ENDPOINT: http://localstack:4566
@@ -119,12 +123,12 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cartao_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rpe}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rpe}
-      PAN_CRIPTOGRAFIA_SENHA: ${PAN_CRIPTOGRAFIA_SENHA}
-      PAN_CRIPTOGRAFIA_SALT: ${PAN_CRIPTOGRAFIA_SALT}
-      PAN_CRIPTOGRAFIA_PEPPER: ${PAN_CRIPTOGRAFIA_PEPPER}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      PAN_CRIPTOGRAFIA_SENHA: ${PAN_CRIPTOGRAFIA_SENHA:-dev-only-insecure-senha-troque-em-producao}
+      PAN_CRIPTOGRAFIA_SALT: ${PAN_CRIPTOGRAFIA_SALT:-deadbeefcafebabe}
+      PAN_CRIPTOGRAFIA_PEPPER: ${PAN_CRIPTOGRAFIA_PEPPER:-dev-only-insecure-pepper-troque-em-producao}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-troque-em-producao-32chars}
+      JWT_ISSUER: ${JWT_ISSUER:-https://portador-service.rpe.local}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-rpe-api}
       PRODUTO_SERVICE_URL: http://produto-service:8081
       REDIS_HOST: redis
       AWS_SQS_ENDPOINT: http://localstack:4566
