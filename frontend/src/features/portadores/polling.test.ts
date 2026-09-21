@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { intervaloDePolling, POLLING } from './polling'
+import { emissaoEmAndamento, intervaloDePolling, POLLING } from './polling'
 
 describe('intervaloDePolling', () => {
   it('deveConsultarRapidoEnquantoAEmissaoEstaPendente', () => {
@@ -14,5 +14,22 @@ describe('intervaloDePolling', () => {
   it('deveParaDeConsultarQuandoAEmissaoConcluiOuAindaNaoHaDados', () => {
     expect(intervaloDePolling('CONCLUIDA')).toBe(false)
     expect(intervaloDePolling(undefined)).toBe(false)
+  })
+
+  it('deveParaDeConsultarQuandoAEmissaoFalhouPoisOEstadoEFinal', () => {
+    expect(intervaloDePolling('FALHOU')).toBe(false)
+  })
+})
+
+describe('emissaoEmAndamento', () => {
+  it('deveConsiderarEmAndamentoSoOsEstadosEmQueAindaValeEsperar', () => {
+    expect(emissaoEmAndamento('PENDENTE')).toBe(true)
+    expect(emissaoEmAndamento('DESCONHECIDA')).toBe(true)
+  })
+
+  it('deveConsiderarFinaisACONCLUIDAeAFALHOU', () => {
+    expect(emissaoEmAndamento('CONCLUIDA')).toBe(false)
+    expect(emissaoEmAndamento('FALHOU')).toBe(false)
+    expect(emissaoEmAndamento(undefined)).toBe(false)
   })
 })

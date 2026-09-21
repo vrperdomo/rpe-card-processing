@@ -110,7 +110,36 @@ describe('buscarPortadorCompleto', () => {
 
     expect(resultado.cartao).toBeNull()
     expect(resultado.produto).toBeNull()
+    expect(resultado.falhaEmissao).toBeNull()
     expect(resultado.avisos).toEqual([])
+  })
+
+  it('deveLerOEstadoFalhouComOMotivoEOHorario', async () => {
+    espiarFetch().mockResolvedValue(
+      respostaJson(
+        200,
+        portadorCompleto({
+          emissao: 'FALHOU',
+          falhaEmissao: { motivo: 'Produto inexistente ou não ATIVO', ocorridaEm: '2026-09-21T12:00:00Z' },
+        }),
+      ),
+    )
+
+    const resultado = await buscarPortadorCompleto(ID_PORTADOR)
+
+    expect(resultado.emissao).toBe('FALHOU')
+    expect(resultado.falhaEmissao).toEqual({
+      motivo: 'Produto inexistente ou não ATIVO',
+      ocorridaEm: '2026-09-21T12:00:00Z',
+    })
+  })
+
+  it('deveRejeitarFalhaEmissaoForaDoContrato', async () => {
+    espiarFetch().mockResolvedValue(
+      respostaJson(200, portadorCompleto({ emissao: 'FALHOU', falhaEmissao: { motivo: 42 } })),
+    )
+
+    await expect(buscarPortadorCompleto(ID_PORTADOR)).rejects.toThrow()
   })
 
   it('deveTratarStatusDeEmissaoDesconhecidoComoDesconhecida', async () => {
