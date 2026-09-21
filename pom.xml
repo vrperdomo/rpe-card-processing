@@ -44,7 +44,7 @@
     <!-- Fixado em 1.5.9 (ultima da linha 1.x), nao 3.x: a partir da 2.0.0 a biblioteca reescreveu
          a API publica inteira (JsonSchema/JsonSchemaFactory/ValidationMessage -> Schema/
          SchemaRegistry/Error), pouco documentada e arriscada de usar sem validacao extensa. -->
-    <json-schema-validator.version>1.5.9</json-schema-validator.version>
+    <json-schema-validator.version>3.0.7</json-schema-validator.version>
 
     <!-- Gate de cobertura (CLAUDE.md secao 7 / 9): 80% em domain + application.
          Sem classes nesses pacotes ainda (Fase 0) o check nao acusa violacao;
