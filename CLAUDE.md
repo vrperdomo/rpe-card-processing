@@ -360,8 +360,7 @@ Aprovar / Solicitar mudanças / Precisa discussão
 ## 11. Docker e ambiente local
 
 ```bash
-cp .env.example .env
-docker compose up -d --build --wait     # sobe tudo
+docker compose up -d --build --wait     # sobe tudo (sem .env: o compose tem padrões dev-only; cp .env.example .env só para sobrescrever)
 docker compose ps
 docker compose logs -f cartao-service
 docker compose down -v                  # derruba e limpa volumes
