@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rpe.local/contracts/cartao-emissao-solicitada.schema.json",
+  "title": "CartaoEmissaoSolicitada",
+  "description": "Publicado por portador-service em cartao-emissao-queue via Transactional Outbox (ADR-005) apos o cadastro do portador. Consumido por cartao-service para emitir o cartao (ADR-006).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "eventVersion", "occurredAt", "correlationId", "data"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "CartaoEmissaoSolicitada" },
+    "eventVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["portadorId", "produtoId", "nomeImpresso"],
+      "properties": {
+        "portadorId": { "type": "string", "format": "uuid" },
+        "produtoId": { "type": "string", "format": "uuid" },
+        "nomeImpresso": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

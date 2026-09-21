@@ -291,6 +291,9 @@ documentado mas não implementado em código (por ausência do frontend nesta en
 - ArchUnit (`ArquiteturaTest`, um por serviço) verifica as fronteiras hexagonais em todo `./mvnw
   test`: domain sem Spring/JPA, application sem depender de adapters, adapters sem se chamar entre
   si (ver [ADR-002](docs/adr/002-arquitetura-hexagonal-enxuta.md)).
+- Contrato dos eventos (`ProdutoAtualizado`, `CartaoEmissaoSolicitada`) validado contra JSON Schema
+  formal em ambos os lados (produtor e consumidor) — schemas canônicos em
+  [`docs/contracts/`](docs/contracts/), testes com `com.networknt:json-schema-validator`.
 - Cobertura mínima JaCoCo de 80% em `domain` + `application` (gate no CI).
 - Scripts de caos (`./scripts/chaos-sqs-down.sh`, `./scripts/chaos-produto-down.sh`) validam a
   resiliência contra a stack real via `docker compose`, não mocks — ver seção
