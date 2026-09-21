@@ -1,5 +1,5 @@
 import { authStore } from '../auth/authStore'
-import { ApiError, lerRetryAfter, type ProblemDetailBody } from './apiError'
+import { ApiError, lerErrosDeCampo, lerRetryAfter, type ProblemDetailBody } from './apiError'
 import { novoCorrelationId } from './correlationId'
 
 export interface OpcoesRequisicao {
@@ -54,6 +54,7 @@ async function erroDaResposta(resposta: Response): Promise<ApiError> {
     detalhe: problema.detail,
     correlationId: problema.correlationId,
     retryAfterSegundos: lerRetryAfter(resposta.headers.get('Retry-After')),
+    errosDeCampo: lerErrosDeCampo(problema.errors),
   })
 }
 

@@ -183,6 +183,17 @@ emissão de cartão" — cada requisição salva automaticamente o token/id nece
 (login → criar produto → cadastrar portador → consultar completo). Reexecutável sem colisão (nome
 do produto e CPF gerados dinamicamente a cada rodada).
 
+**Pela interface** (`http://localhost:3000`, depois do login): **Cadastrar portador** pede nome, CPF
+(com máscara e validação dos dígitos), data de nascimento (18 anos ou mais) e um produto **ATIVO**
+escolhido numa lista; ao cadastrar, abre o **detalhe do portador**, que consulta
+`GET /portadores/{id}/completo` sozinho (a cada 2 s enquanto a emissão está `PENDENTE`) até o cartão
+aparecer, com o número sempre mascarado. Se o serviço de Cartão ou o de Produto estiver fora do ar,
+a tela continua mostrando o que tem, com os `avisos` da resposta degradada, e passa a consultar mais
+devagar (5 s). Como o backend não tem estado de falha na emissão (uma mensagem que vai para a DLQ
+continua `PENDENTE`), o polling **desiste após 2 minutos** e explica; "Atualizar" consulta de novo
+a qualquer momento. Não há listagem de portadores na API, então o detalhe também abre pelo
+identificador na página inicial. Cadastro de produto continua pelo Swagger/Postman.
+
 ## Decisões técnicas
 
 Registradas como ADRs em [`docs/adr/`](docs/adr/):

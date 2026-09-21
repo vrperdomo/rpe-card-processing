@@ -73,6 +73,27 @@ describe('apiFetch', () => {
     expect(erro.retryAfterSegundos).toBe(30)
   })
 
+  it('deveExporOsErrosDeCampoDeUmaValidacao400', async () => {
+    espiarFetch().mockResolvedValue(
+      respostaJson(400, {
+        title: 'Payload inválido',
+        errors: [{ field: 'cpf', message: 'CPF inválido' }, { campo: 'sem-formato' }, 'texto', null],
+      }),
+    )
+
+    const erro = await capturarErro(apiFetch('/api/v1/portadores', { metodo: 'POST', corpo: {} }))
+
+    expect(erro.errosDeCampo).toEqual([{ field: 'cpf', message: 'CPF inválido' }])
+  })
+
+  it('deveIgnorarErrosDeCampoQueNaoSaoUmaLista', async () => {
+    espiarFetch().mockResolvedValue(respostaJson(400, { errors: 'quebrado' }))
+
+    const erro = await capturarErro(apiFetch('/api/v1/portadores'))
+
+    expect(erro.errosDeCampo).toEqual([])
+  })
+
   it('deveIgnorarCorpoQueNaoEJson', async () => {
     espiarFetch().mockResolvedValue(
       new Response('<html>502 Bad Gateway</html>', { status: 502, headers: { 'Content-Type': 'text/html' } }),
