@@ -111,12 +111,14 @@ tabelas acima ficam como registro da revisão original; o estado atual é:
 - **Lacuna 4 (A05) — resolvida pelo [ADR-008](008-frontend-react-nginx.md).** Com o Nginx do
   frontend como proxy reverso o browser só fala com uma origem, então nenhum serviço precisa de
   CORS e o padrão do Spring (negar cross-origin) é o desejado. Não há lista de origens a manter.
-- **Lacuna 1 (A01) — Portador corrigido; Cartão em andamento (#121).** O dono de um recurso é o
-  `sub` do JWT de quem cadastrou o portador.
-  - **Modelo.** Coluna `criado_por` (migração `V3`, `NOT NULL`, sem `DEFAULT` depois do backfill).
-    Um `Solicitante` (application, sem Spring) é extraído do JWT validado por `SolicitanteJwt`
-    (adapter web). `AcessoAoPortador` é o ponto único de leitura: `BuscarPortador`,
-    `AlterarStatusPortador` e `BuscarPortadorCompleto` passam por ele.
+- **Lacuna 1 (A01) — corrigida (#121).** O dono de um recurso é o `sub` do JWT de quem cadastrou o
+  portador; o cartão herda o dono do portador.
+  - **Modelo.** Coluna `criado_por` em `portador` e em `cartao` (migração `V3` em cada serviço,
+    `NOT NULL`, sem `DEFAULT` depois do backfill). Um `Solicitante` (application, sem Spring) é
+    extraído do JWT validado por `SolicitanteJwt` (adapter web). `AcessoAoPortador` e
+    `AcessoAoCartao` são o ponto único de leitura por id: `BuscarPortador`,
+    `AlterarStatusPortador`, `BuscarPortadorCompleto`, `BuscarCartao` e `AlterarStatusCartao`
+    passam por eles.
   - **404, não 403, para quem não é dono.** A resposta é idêntica à de um id inexistente: um 403
     revelaria que o id existe e permitiria enumerar portadores alheios. A tentativa fica em `WARN`
     (`portadorId`, `solicitante`). No `/completo` a posse é checada **antes** de consultar Cartão e
@@ -124,17 +126,24 @@ tabelas acima ficam como registro da revisão original; o estado atual é:
   - **Token de serviço.** O Portador consulta o Cartão com um token próprio (`sub=portador-service`)
     que agora leva `scope=servico`. Um `Solicitante` de serviço ignora a checagem de posse: quem o
     chama já foi autorizado pelo serviço de origem. Sem isso, a checagem de posse do Cartão
-    (próximo PR) derrubaria o `/completo`. Um usuário não consegue forjar o escopo: o token de
-    usuário é emitido só em `/login`, que não o inclui, e a assinatura HS256 cobre as claims.
+    derrubaria o `/completo`. Um usuário não consegue forjar o escopo: o token de usuário é
+    emitido só em `/login`, que não o inclui, e a assinatura HS256 cobre as claims. A confiança é
+    a do segredo HS256 compartilhado: quem o possui já emite qualquer token (limitação do ADR-004).
   - **Dados anteriores à migração** recebem o dono `legado`, que nenhum usuário possui: falha
     fechada (ninguém os acessa; um usuário chamado `legado` também não). Em produção seria preciso
     um backfill com donos reais; no ambiente local, `docker compose down -v` recria tudo.
-  - **Evento.** `CartaoEmissaoSolicitada` passa a carregar `data.criadoPor`. É opcional no schema e
-    `eventVersion` continua 1: o campo é aditivo e o consumer do Cartão ignora campos
+  - **Evento.** `CartaoEmissaoSolicitada` carrega `data.criadoPor`, gravado como dono do cartão.
+    É opcional no schema e `eventVersion` continua 1: o campo é aditivo e o consumer ignora campos
     desconhecidos, então Portador e Cartão podem ser implantados em qualquer ordem. O Portador
-    sempre o publica (teste de contrato).
-  - **Ainda aberto:** o Cartão (`GET /cartoes/{id}`, `PATCH .../status` e a listagem por
-    `portadorId`) segue sem checagem de posse até o PR seguinte do #121. Como o Nginx expõe
-    `/api/v1/cartoes`, o IDOR continua possível **no Cartão** até lá.
+    sempre o publica (teste de contrato). O Cartão é leitor tolerante: um evento antigo, sem
+    `criadoPor`, emite o cartão com dono `legado` (WARN) em vez de ir para a DLQ e nunca emitir.
+  - **Cartão.** `GET /cartoes/{id}` e `PATCH .../status` respondem 404 a quem não é dono. A
+    listagem `GET /cartoes?portadorId=` filtra **no banco** por dono (`total` e páginas refletem
+    só o que o usuário pode ver); para quem não é dono ela devolve uma página vazia, não 404,
+    porque o parâmetro é um filtro e não o recurso. O token de serviço lista sem filtro. A
+    tentativa em listagem não gera log, pois não há como distinguir "outro dono" de "sem cartões"
+    sem uma segunda consulta.
+  - **Como o Nginx expõe `/api/v1/cartoes`**, o Cartão é alcançável direto pelo browser; por isso a
+    checagem vale nos dois serviços, não só no Portador.
   - Limitação assumida: um único usuário seed. O modelo já é correto para multiusuário, mas só
     há um `sub` real; os testes usam dois para provar o isolamento.

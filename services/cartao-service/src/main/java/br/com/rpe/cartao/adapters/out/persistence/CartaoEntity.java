@@ -43,6 +43,9 @@ public class CartaoEntity {
   @Column(nullable = false, length = 5)
   private String validade;
 
+  @Column(name = "criado_por", nullable = false, updatable = false)
+  private String criadoPor;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
   private StatusCartao status;
@@ -70,6 +73,7 @@ public class CartaoEntity {
       String ultimos4,
       String nomeImpresso,
       String validade,
+      String criadoPor,
       StatusCartao status) {
     this.id = id;
     this.portadorId = portadorId;
@@ -79,6 +83,7 @@ public class CartaoEntity {
     this.ultimos4 = ultimos4;
     this.nomeImpresso = nomeImpresso;
     this.validade = validade;
+    this.criadoPor = criadoPor;
     this.status = status;
   }
 
@@ -92,6 +97,10 @@ public class CartaoEntity {
 
   public UUID getProdutoId() {
     return produtoId;
+  }
+
+  public String getCriadoPor() {
+    return criadoPor;
   }
 
   public String getPanCifrado() {

@@ -75,7 +75,20 @@ class CartaoEmissaoSolicitadaListenerIT extends IntegrationTestBase {
   @Autowired private CartaoRepositorio cartaoRepositorio;
   @MockitoBean private ProdutoHttpClient produtoHttpClient;
 
+  // Evento no formato anterior ao #121: sem data.criadoPor.
   private String corpoValido(UUID eventId, UUID portadorId, UUID produtoId, String nomeImpresso) {
+    return corpoValido(eventId, portadorId, produtoId, nomeImpresso, null);
+  }
+
+  private String corpoValido(
+      UUID eventId, UUID portadorId, UUID produtoId, String nomeImpresso, String criadoPor) {
+    Map<String, String> data = new java.util.HashMap<>();
+    data.put("portadorId", portadorId.toString());
+    data.put("produtoId", produtoId.toString());
+    data.put("nomeImpresso", nomeImpresso);
+    if (criadoPor != null) {
+      data.put("criadoPor", criadoPor);
+    }
     try {
       return objectMapper.writeValueAsString(
           Map.of(
@@ -88,10 +101,7 @@ class CartaoEmissaoSolicitadaListenerIT extends IntegrationTestBase {
               "correlationId",
               "corr-xyz",
               "data",
-              Map.of(
-                  "portadorId", portadorId.toString(),
-                  "produtoId", produtoId.toString(),
-                  "nomeImpresso", nomeImpresso)));
+              data));
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }
@@ -215,5 +225,49 @@ class CartaoEmissaoSolicitadaListenerIT extends IntegrationTestBase {
         .atMost(Duration.ofSeconds(8))
         .untilAsserted(() -> assertThat(receber(DLQ)).isEmpty());
     assertThat(cartaoRepositorio.existePorPortadorEProduto(portadorId, produtoId)).isFalse();
+  }
+
+  private String donoDoCartaoEmitido(UUID portadorId, UUID produtoId) {
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () ->
+                assertThat(cartaoRepositorio.existePorPortadorEProduto(portadorId, produtoId))
+                    .isTrue());
+    return cartaoRepositorio
+        .buscarPorPortadorId(portadorId, org.springframework.data.domain.PageRequest.of(0, 1))
+        .getContent()
+        .get(0)
+        .getCriadoPor();
+  }
+
+  @Test
+  void deveGravarComoDonoDoCartaoOUsuarioQueCadastrouOPortador() {
+    UUID eventId = UUID.randomUUID();
+    UUID portadorId = UUID.randomUUID();
+    UUID produtoId = UUID.randomUUID();
+    when(produtoHttpClient.buscarPorId(produtoId))
+        .thenReturn(
+            Optional.of(
+                new ProdutoDto(produtoId, "Gold", "GOLD", "453201", StatusProdutoExterno.ATIVO)));
+
+    enviar(corpoValido(eventId, portadorId, produtoId, "VICTOR RODRIGUES", "admin"));
+
+    assertThat(donoDoCartaoEmitido(portadorId, produtoId)).isEqualTo("admin");
+  }
+
+  @Test
+  void deveEmitirComDonoLegadoQuandoEventoNaoTrazCriadoPor() {
+    UUID eventId = UUID.randomUUID();
+    UUID portadorId = UUID.randomUUID();
+    UUID produtoId = UUID.randomUUID();
+    when(produtoHttpClient.buscarPorId(produtoId))
+        .thenReturn(
+            Optional.of(
+                new ProdutoDto(produtoId, "Gold", "GOLD", "453201", StatusProdutoExterno.ATIVO)));
+
+    enviar(corpoValido(eventId, portadorId, produtoId, "VICTOR RODRIGUES"));
+
+    assertThat(donoDoCartaoEmitido(portadorId, produtoId)).isEqualTo("legado");
   }
 }

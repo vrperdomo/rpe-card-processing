@@ -5,6 +5,7 @@ import br.com.rpe.cartao.application.port.out.MensagemProcessadaRepositorio;
 import br.com.rpe.cartao.application.port.out.ProdutoClient;
 import br.com.rpe.cartao.application.port.out.ProdutoDto;
 import br.com.rpe.cartao.application.port.out.StatusProdutoExterno;
+import br.com.rpe.cartao.application.seguranca.Solicitante;
 import br.com.rpe.cartao.domain.Cartao;
 import br.com.rpe.cartao.domain.Pan;
 import br.com.rpe.cartao.domain.Validade;
@@ -50,7 +51,8 @@ public class EmitirCartaoUseCase {
   }
 
   @Transactional
-  public void executar(UUID eventId, UUID portadorId, UUID produtoId, String nomeImpresso) {
+  public void executar(
+      UUID eventId, UUID portadorId, UUID produtoId, String nomeImpresso, String criadoPor) {
     if (mensagemProcessadaRepositorio.jaProcessada(eventId)) {
       log.info("Mensagem {} ja processada, ignorando (idempotencia)", eventId);
       return;
@@ -81,9 +83,22 @@ public class EmitirCartaoUseCase {
             Pan.gerar(produto.bin()),
             nomeImpresso,
             Validade.gerar(agora),
+            donoDoEvento(criadoPor, eventId),
             agora);
     cartaoRepositorio.salvar(cartao);
     mensagemProcessadaRepositorio.marcarProcessada(eventId, agora);
     meterRegistry.counter("cartao.emitidos").increment();
+  }
+
+  // Leitor tolerante (ADR-009, A01): eventos publicados antes do #121 não trazem criadoPor. O
+  // cartão emitido a partir deles fica com o dono "legado", que nenhum usuário possui (falha
+  // fechada), em vez de a mensagem ir para a DLQ e o cartão nunca ser emitido.
+  private static String donoDoEvento(String criadoPor, UUID eventId) {
+    if (criadoPor == null || criadoPor.isBlank()) {
+      log.warn(
+          "Evento {} sem criadoPor (anterior ao #121): cartão emitido com dono legado", eventId);
+      return Solicitante.DONO_LEGADO;
+    }
+    return criadoPor;
   }
 }

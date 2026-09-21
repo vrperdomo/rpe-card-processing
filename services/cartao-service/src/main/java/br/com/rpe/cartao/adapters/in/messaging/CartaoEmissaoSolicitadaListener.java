@@ -86,7 +86,8 @@ public class CartaoEmissaoSolicitadaListener {
           mensagem.eventId(),
           mensagem.data().portadorId(),
           mensagem.data().produtoId(),
-          mensagem.data().nomeImpresso());
+          mensagem.data().nomeImpresso(),
+          mensagem.data().criadoPor());
     } catch (RegraNegocioException ex) {
       log.warn("Erro definitivo ao emitir cartão: {}", ex.getMessage());
       enviarParaDlq(corpo, ex.getMessage());

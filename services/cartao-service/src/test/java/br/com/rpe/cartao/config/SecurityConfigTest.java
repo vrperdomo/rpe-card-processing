@@ -9,6 +9,7 @@ import br.com.rpe.cartao.adapters.in.web.ProblemDetailFactory;
 import br.com.rpe.cartao.adapters.in.web.mapper.CartaoWebMapper;
 import br.com.rpe.cartao.adapters.in.web.security.JwtAccessDeniedHandler;
 import br.com.rpe.cartao.adapters.in.web.security.JwtAuthEntryPoint;
+import br.com.rpe.cartao.application.seguranca.Solicitante;
 import br.com.rpe.cartao.application.usecase.AlterarStatusCartaoUseCase;
 import br.com.rpe.cartao.application.usecase.BuscarCartaoUseCase;
 import br.com.rpe.cartao.application.usecase.CartaoComProduto;
@@ -81,8 +82,9 @@ class SecurityConfigTest {
             Pan.of("4532015112830366"),
             "VICTOR RODRIGUES",
             Validade.gerar(AGORA),
+            "admin",
             AGORA);
-    when(buscarCartaoUseCase.executar(cartao.getId()))
+    when(buscarCartaoUseCase.executar(cartao.getId(), Solicitante.deUsuario("portador-teste")))
         .thenReturn(new CartaoComProduto(cartao, Optional.empty()));
 
     String token = gerarToken(SECRET, ISSUER, List.of(AUDIENCE), Instant.now().plusSeconds(300));

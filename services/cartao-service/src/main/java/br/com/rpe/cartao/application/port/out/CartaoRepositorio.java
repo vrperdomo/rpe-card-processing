@@ -15,4 +15,6 @@ public interface CartaoRepositorio {
   boolean existePorPortadorEProduto(UUID portadorId, UUID produtoId);
 
   Page<Cartao> buscarPorPortadorId(UUID portadorId, Pageable pageable);
+
+  Page<Cartao> buscarPorPortadorIdEDono(UUID portadorId, String criadoPor, Pageable pageable);
 }
