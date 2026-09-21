@@ -1,0 +1,66 @@
+name: ci-frontend
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: lint, typecheck, test e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências (lockfile exato)
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      - name: Build de produção
+        run: npm run build
+
+  docker-build:
+    name: imagem Docker (Nginx)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Garante que o Dockerfile/nginx.conf continuam válidos: o Nginx testa a própria configuração
+      # (nginx -t) dentro da imagem construída.
+      - name: Construir a imagem e validar a configuração do Nginx
+        run: |
+          docker build -t rpe-frontend:ci frontend
+          docker run --rm --entrypoint nginx rpe-frontend:ci -t

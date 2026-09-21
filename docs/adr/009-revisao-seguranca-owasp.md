@@ -99,5 +99,7 @@ tabelas acima ficam como registro da revisão original; o estado atual é:
   O username digitado **não** é logado (entrada do cliente: injeção de log, e pode ser um CPF).
   Continua em aberto: `JwtAuthEntryPoint`/`JwtAccessDeniedHandler` (401/403 em endpoints
   protegidos) ainda não logam.
-- **Lacunas 1 (A01) e 4 (A05)** seguem como estavam. A 4 (CORS) deve ser resolvida junto do
-  frontend: com o Nginx como proxy reverso (ADR-008) o browser só fala com uma origem.
+- **Lacuna 4 (A05) — resolvida pelo [ADR-008](008-frontend-react-nginx.md).** Com o Nginx do
+  frontend como proxy reverso o browser só fala com uma origem, então nenhum serviço precisa de
+  CORS e o padrão do Spring (negar cross-origin) é o desejado. Não há lista de origens a manter.
+- **Lacuna 1 (A01)** segue como estava.
