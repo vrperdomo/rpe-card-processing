@@ -80,3 +80,41 @@ transitório-esgotado ou definitivo) — expostas via Actuator/Prometheus.
   longa do Produto — mitigado pelo `CircuitBreaker` abrir depois de poucas falhas (`failure-rate-
   threshold: 50%` numa janela de 10 chamadas) e passar a falhar rápido, sem nem tentar a chamada
   HTTP, reduzindo a pressão mesmo sem backoff entre entregas.
+
+## Atualização de 21/09/2026 — estado de falha da emissão (#117)
+
+Uma mensagem que terminava na DLQ deixava o portador `PENDENTE` para sempre: o Portador só via
+"existe cartão" ou "ainda não existe". A decisão é o **Cartão registrar a falha e expô-la**; o
+Portador a consulta no `/completo`, chamada que já faz ao Cartão. Não há evento de volta.
+
+- **O que é registrado.** Tabela `emissao_falha` (migração `V4` do Cartão): uma linha por portador,
+  com `produto_id`, `motivo` e `criado_por` (mesma regra de posse do cartão, ADR-009). Uma nova
+  falha do mesmo portador substitui a anterior; uma emissão bem-sucedida a **apaga**, então um
+  reprocessamento da DLQ que der certo corrige o estado sozinho.
+- **Quando registrar.** Falha **definitiva** (produto inexistente/`CANCELADO`, schema incompatível):
+  na hora, antes de enviar à DLQ. Falha **transitória**: só na **última entrega**, que o listener
+  reconhece pelo cabeçalho `ApproximateReceiveCount` (`Sqs_Msa_ApproximateReceiveCount`, entregue
+  por padrão pelo Spring Cloud AWS) `>= maxReceiveCount`; ele registra e relança, e o SQS move a
+  mensagem para a DLQ na entrega seguinte. Payload ilegível **não** é registrado: sem `portadorId`
+  não há a quem atribuir a falha (segue só na DLQ).
+- **`maxReceiveCount` é configuração duplicada.** `rpe.cartao.mensageria.cartao-emissao-max-receive-count`
+  (env `CARTAO_EMISSAO_MAX_RECEIVE_COUNT`, padrão 3) precisa coincidir com o `RedrivePolicy` da fila
+  (`infra/localstack/init-queues.sh`). Se for **maior** que o real, a falha transitória não é
+  registrada e o portador segue `PENDENTE` (degrada seguro). Se for **menor** e uma nova entrega
+  der certo, a emissão apaga a falha registrada cedo demais. Ler o valor da fila em runtime
+  (`GetQueueAttributes`) eliminaria a duplicação, mas custaria uma dependência de permissão e de
+  disponibilidade do SQS na inicialização; não se justificou.
+- **Registrar não pode quebrar o fluxo.** É um efeito colateral informativo: se o banco falhar ao
+  registrar, o erro é logado com stack e o fluxo original segue (DLQ, ou relançar para o SQS
+  reentregar). O registro roda em transação própria; quando o listener o chama, a transação da
+  emissão já foi revertida.
+- **Motivo seguro.** Texto para o cliente, sem detalhe interno: para falha definitiva vem da
+  `RegraNegocioException` (ex.: "Produto X inexistente ou não ATIVO"); para transitória é fixo
+  ("Tentativas de emissão esgotadas: dependência indisponível"). Truncado em 255 caracteres.
+- **API.** `GET /api/v1/emissao-falhas/{portadorId}` no Cartão: 200 com a falha, ou 404 se não há
+  falha ou se ela é de outro dono. É de uso interno (o Nginx do frontend não o expõe).
+- **Métrica.** `cartao.emissao.falhas` com a tag `tipo` (`definitiva` ou `tentativas_esgotadas`).
+- **Limitação assumida.** O estado vive no Cartão, então se o Cartão estiver fora o `/completo`
+  segue `DESCONHECIDA` (já era assim). A alternativa descartada foi o Cartão publicar
+  `CartaoEmissaoFalhou` de volta ao Portador: mais desacoplada, mas exigiria Outbox no Cartão, fila
+  nova e consumer no Portador, um custo desproporcional ao ganho aqui.

@@ -30,6 +30,11 @@ public record Solicitante(String id, boolean servico) {
     return new Solicitante(id, true);
   }
 
+  /** Dono a gravar para um evento: os anteriores ao #121 não trazem criadoPor e ficam 'legado'. */
+  public static String donoOuLegado(String criadoPor) {
+    return criadoPor == null || criadoPor.isBlank() ? DONO_LEGADO : criadoPor;
+  }
+
   public boolean podeAcessar(String donoDoRecurso) {
     if (servico) {
       return true;

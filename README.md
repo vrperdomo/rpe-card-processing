@@ -273,6 +273,13 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
 | **Transitório** | Produto Service indisponível (circuito aberto/timeout) | Mensagem não é confirmada → SQS reentrega até `maxReceiveCount` → DLQ automática |
 | **Definitivo** | Produto inexistente/`CANCELADO`, payload ilegível, schema/versão incompatível | Envio direto para a DLQ com motivo (`erro-motivo`), sem redelivery |
 
+**Falha de emissão registrada.** Quando a mensagem termina na DLQ (definitiva, ou transitória na
+última entrega do SQS, reconhecida por `ApproximateReceiveCount >= maxReceiveCount`), o Cartão grava
+a falha (portador, motivo, dono) em `emissao_falha`. Uma emissão bem-sucedida a apaga.
+`maxReceiveCount` (`CARTAO_EMISSAO_MAX_RECEIVE_COUNT`, padrão 3) deve coincidir com o redrive da fila
+em `infra/localstack/init-queues.sh`. Métrica: `cartao.emissao.falhas{tipo}`. Detalhes no
+[ADR-006](docs/adr/006-retry-dlq-idempotencia.md).
+
 ## Segurança
 
 - **Segredos:** nunca commitados — só via `.env` (ignorado pelo Git) e `.env.example` com valores

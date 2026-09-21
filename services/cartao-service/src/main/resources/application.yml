@@ -75,6 +75,8 @@ rpe:
       produto-eventos-dlq: produto-eventos-dlq
       cartao-emissao-queue: cartao-emissao-queue
       cartao-emissao-dlq: cartao-emissao-dlq
+      # Igual ao maxReceiveCount do RedrivePolicy (infra/localstack/init-queues.sh).
+      cartao-emissao-max-receive-count: ${CARTAO_EMISSAO_MAX_RECEIVE_COUNT:3}
       listener-auto-startup: true
 
 resilience4j:

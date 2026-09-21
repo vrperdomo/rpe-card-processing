@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.rpe.cartao.adapters.out.http.ProdutoHttpClient;
 import br.com.rpe.cartao.application.port.out.CartaoRepositorio;
+import br.com.rpe.cartao.application.port.out.EmissaoFalhaRepositorio;
 import br.com.rpe.cartao.domain.Cartao;
+import br.com.rpe.cartao.domain.EmissaoFalha;
 import br.com.rpe.cartao.domain.Pan;
 import br.com.rpe.cartao.domain.StatusCartao;
 import br.com.rpe.cartao.domain.Validade;
@@ -47,6 +49,7 @@ class PosseDoCartaoIT extends IntegrationTestBase {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private CartaoRepositorio cartaoRepositorio;
+  @Autowired private EmissaoFalhaRepositorio emissaoFalhaRepositorio;
   @MockitoBean private ProdutoHttpClient produtoHttpClient;
 
   private static JwtRequestPostProcessor usuario(String sub) {
@@ -147,5 +150,36 @@ class PosseDoCartaoIT extends IntegrationTestBase {
     mockMvc
         .perform(get("/api/v1/cartoes/{id}", legado.getId()).with(servico()))
         .andExpect(status().isOk());
+  }
+
+  private UUID falhaDe(String dono) {
+    UUID portadorId = UUID.randomUUID();
+    emissaoFalhaRepositorio.registrar(
+        new EmissaoFalha(
+            portadorId, UUID.randomUUID(), "Produto inexistente ou não ATIVO", dono, AGORA));
+    return portadorId;
+  }
+
+  @Test
+  void donoEServicoDevemVerAFalhaDeEmissaoEIntrusoRecebe404() throws Exception {
+    UUID portadorId = falhaDe("admin");
+
+    mockMvc
+        .perform(get("/api/v1/emissao-falhas/{id}", portadorId).with(usuario("admin")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.motivo").value("Produto inexistente ou não ATIVO"));
+    mockMvc
+        .perform(get("/api/v1/emissao-falhas/{id}", portadorId).with(servico()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(get("/api/v1/emissao-falhas/{id}", portadorId).with(usuario("intruso")))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void deveRetornar404QuandoNaoHaFalhaRegistrada() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/emissao-falhas/{id}", UUID.randomUUID()).with(servico()))
+        .andExpect(status().isNotFound());
   }
 }
