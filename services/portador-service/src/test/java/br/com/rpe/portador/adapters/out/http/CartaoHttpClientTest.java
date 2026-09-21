@@ -5,19 +5,23 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.rpe.portador.IntegrationTestBase;
 import br.com.rpe.portador.application.port.out.CartaoDto;
+import br.com.rpe.portador.application.port.out.FalhaEmissaoDto;
 import br.com.rpe.portador.application.port.out.StatusCartaoExterno;
 import br.com.rpe.portador.domain.exception.DependenciaIndisponivelException;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -126,5 +130,70 @@ class CartaoHttpClientTest extends IntegrationTestBase {
 
     CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker("cartao");
     assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+  }
+
+  private String caminhoFalha(UUID portadorId) {
+    return "/api/v1/emissao-falhas/" + portadorId;
+  }
+
+  @Test
+  void deveRetornarAFalhaQuandoOCartaoRegistrouUma() {
+    UUID portadorId = UUID.randomUUID();
+    wireMock.stubFor(
+        get(urlEqualTo(caminhoFalha(portadorId)))
+            .willReturn(
+                okJson(
+                    """
+                    {"portadorId":"%s","produtoId":"%s","motivo":"Produto inexistente ou não ATIVO","ocorridaEm":"2026-09-21T10:00:00Z"}
+                    """
+                        .formatted(portadorId, UUID.randomUUID()))));
+
+    Optional<FalhaEmissaoDto> resultado = cartaoClient.buscarFalhaEmissao(portadorId);
+
+    assertThat(resultado)
+        .contains(
+            new FalhaEmissaoDto(
+                "Produto inexistente ou não ATIVO", Instant.parse("2026-09-21T10:00:00Z")));
+    wireMock.verify(
+        getRequestedFor(urlEqualTo(caminhoFalha(portadorId)))
+            .withHeader("Authorization", matching("Bearer .+")));
+  }
+
+  @Test
+  void deveRetornarVazioSemRetentarQuandoNaoHaFalhaRegistrada() {
+    UUID portadorId = UUID.randomUUID();
+    wireMock.stubFor(
+        get(urlEqualTo(caminhoFalha(portadorId))).willReturn(aResponse().withStatus(404)));
+
+    Optional<FalhaEmissaoDto> resultado = cartaoClient.buscarFalhaEmissao(portadorId);
+
+    assertThat(resultado).isEmpty();
+    wireMock.verify(1, getRequestedFor(urlEqualTo(caminhoFalha(portadorId))));
+  }
+
+  @Test
+  void deveLancarDependenciaIndisponivelNaConsultaDaFalhaQuandoErroPersistente() {
+    UUID portadorId = UUID.randomUUID();
+    wireMock.stubFor(
+        get(urlEqualTo(caminhoFalha(portadorId))).willReturn(aResponse().withStatus(500)));
+
+    assertThatThrownBy(() -> cartaoClient.buscarFalhaEmissao(portadorId))
+        .isInstanceOfSatisfying(
+            DependenciaIndisponivelException.class,
+            ex -> assertThat(ex.getRetryAfter()).isEqualTo(Duration.ofSeconds(10)));
+    wireMock.verify(3, getRequestedFor(urlEqualTo(caminhoFalha(portadorId))));
+  }
+
+  @Test
+  void respostas404DeFalhaNaoDevemContarParaOCircuito() {
+    wireMock.stubFor(
+        get(urlPathMatching("/api/v1/emissao-falhas/.*")).willReturn(aResponse().withStatus(404)));
+
+    for (int i = 0; i < 25; i++) {
+      cartaoClient.buscarFalhaEmissao(UUID.randomUUID());
+    }
+
+    assertThat(circuitBreakerRegistry.circuitBreaker("cartao").getState())
+        .isEqualTo(CircuitBreaker.State.CLOSED);
   }
 }

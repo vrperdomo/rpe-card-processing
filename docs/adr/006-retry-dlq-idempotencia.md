@@ -118,3 +118,13 @@ Portador a consulta no `/completo`, chamada que já faz ao Cartão. Não há eve
   segue `DESCONHECIDA` (já era assim). A alternativa descartada foi o Cartão publicar
   `CartaoEmissaoFalhou` de volta ao Portador: mais desacoplada, mas exigiria Outbox no Cartão, fila
   nova e consumer no Portador, um custo desproporcional ao ganho aqui.
+
+**Consulta no Portador (PR 2 do #117).** O `/completo` passa a ter quatro estados de emissão:
+`CONCLUIDA` (há cartão), `PENDENTE` (nem cartão nem falha), `FALHOU` (o Cartão registrou falha; a
+resposta traz `falhaEmissao` com motivo e horário) e `DESCONHECIDA` (Cartão indisponível). O Portador
+só pergunta pela falha quando **não** há cartão, então o caminho feliz segue com uma única chamada
+ao Cartão. Se a segunda consulta falhar, o estado é `DESCONHECIDA` com aviso: sem saber o que o
+Cartão registrou não dá para afirmar `PENDENTE` nem `FALHOU`. Um `404` de "sem falha registrada" é
+estado normal e não conta para o `CircuitBreaker` (que só registra erro de conexão e 5xx). Custo
+assumido: enquanto o portador está `PENDENTE`, cada consulta faz duas chamadas sequenciais ao
+Cartão (a paralelização do `/completo` segue em backlog, #115).
