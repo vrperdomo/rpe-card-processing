@@ -59,7 +59,7 @@ class OutboxRepositorioJpaAdapterIT extends IntegrationTestBase {
     return EventoOutbox.criar(
         "CartaoEmissaoSolicitada",
         "corr-abc",
-        new CartaoEmissaoSolicitadaData(aggregateId, UUID.randomUUID(), "VICTOR"),
+        new CartaoEmissaoSolicitadaData(aggregateId, UUID.randomUUID(), "VICTOR", "admin"),
         AGORA);
   }
 

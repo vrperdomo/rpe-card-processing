@@ -35,6 +35,9 @@ public class PortadorEntity {
   @Column(name = "produto_id", nullable = false)
   private UUID produtoId;
 
+  @Column(name = "criado_por", nullable = false, updatable = false)
+  private String criadoPor;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
   private StatusPortador status;
@@ -59,12 +62,14 @@ public class PortadorEntity {
       String cpf,
       LocalDate dataNascimento,
       UUID produtoId,
+      String criadoPor,
       StatusPortador status) {
     this.id = id;
     this.nome = nome;
     this.cpf = cpf;
     this.dataNascimento = dataNascimento;
     this.produtoId = produtoId;
+    this.criadoPor = criadoPor;
     this.status = status;
   }
 
@@ -98,6 +103,10 @@ public class PortadorEntity {
 
   public UUID getProdutoId() {
     return produtoId;
+  }
+
+  public String getCriadoPor() {
+    return criadoPor;
   }
 
   public void setProdutoId(UUID produtoId) {

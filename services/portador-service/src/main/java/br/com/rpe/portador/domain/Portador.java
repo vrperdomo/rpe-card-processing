@@ -18,6 +18,7 @@ public class Portador {
   private final Cpf cpf;
   private final LocalDate dataNascimento;
   private final UUID produtoId;
+  private final String criadoPor;
   private StatusPortador status;
   private final Instant criadoEm;
   private Instant atualizadoEm;
@@ -28,6 +29,7 @@ public class Portador {
       Cpf cpf,
       LocalDate dataNascimento,
       UUID produtoId,
+      String criadoPor,
       StatusPortador status,
       Instant criadoEm,
       Instant atualizadoEm) {
@@ -37,13 +39,19 @@ public class Portador {
     this.dataNascimento =
         Objects.requireNonNull(dataNascimento, "dataNascimento não pode ser nula");
     this.produtoId = Objects.requireNonNull(produtoId, "produtoId não pode ser nulo");
+    this.criadoPor = validarCriadoPor(criadoPor);
     this.status = Objects.requireNonNull(status, "status não pode ser nulo");
     this.criadoEm = Objects.requireNonNull(criadoEm, "criadoEm não pode ser nulo");
     this.atualizadoEm = Objects.requireNonNull(atualizadoEm, "atualizadoEm não pode ser nulo");
   }
 
   public static Portador cadastrar(
-      String nome, Cpf cpf, LocalDate dataNascimento, UUID produtoId, Instant agora) {
+      String nome,
+      Cpf cpf,
+      LocalDate dataNascimento,
+      UUID produtoId,
+      String criadoPor,
+      Instant agora) {
     Objects.requireNonNull(agora, "agora não pode ser nulo");
     validarMaioridade(dataNascimento, agora);
     return new Portador(
@@ -52,6 +60,7 @@ public class Portador {
         cpf,
         dataNascimento,
         produtoId,
+        criadoPor,
         StatusPortador.ATIVO,
         agora,
         agora);
@@ -63,10 +72,12 @@ public class Portador {
       Cpf cpf,
       LocalDate dataNascimento,
       UUID produtoId,
+      String criadoPor,
       StatusPortador status,
       Instant criadoEm,
       Instant atualizadoEm) {
-    return new Portador(id, nome, cpf, dataNascimento, produtoId, status, criadoEm, atualizadoEm);
+    return new Portador(
+        id, nome, cpf, dataNascimento, produtoId, criadoPor, status, criadoEm, atualizadoEm);
   }
 
   public void bloquear(Instant agora) {
@@ -115,6 +126,13 @@ public class Portador {
     return nome;
   }
 
+  private static String validarCriadoPor(String criadoPor) {
+    if (criadoPor == null || criadoPor.isBlank()) {
+      throw new IllegalArgumentException("criadoPor não pode ser vazio");
+    }
+    return criadoPor;
+  }
+
   private static void validarMaioridade(LocalDate dataNascimento, Instant agora) {
     Objects.requireNonNull(dataNascimento, "dataNascimento não pode ser nula");
     LocalDate hoje = LocalDate.ofInstant(agora, ZoneOffset.UTC);
@@ -143,6 +161,10 @@ public class Portador {
 
   public UUID getProdutoId() {
     return produtoId;
+  }
+
+  public String getCriadoPor() {
+    return criadoPor;
   }
 
   public StatusPortador getStatus() {

@@ -1,9 +1,9 @@
 package br.com.rpe.portador.application.usecase;
 
 import br.com.rpe.portador.application.port.out.PortadorRepositorio;
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.domain.Portador;
 import br.com.rpe.portador.domain.StatusPortador;
-import br.com.rpe.portador.domain.exception.RecursoNaoEncontradoException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -13,22 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AlterarStatusPortadorUseCase {
 
+  private final AcessoAoPortador acessoAoPortador;
   private final PortadorRepositorio portadorRepositorio;
   private final Clock clock;
 
-  public AlterarStatusPortadorUseCase(PortadorRepositorio portadorRepositorio, Clock clock) {
+  public AlterarStatusPortadorUseCase(
+      AcessoAoPortador acessoAoPortador, PortadorRepositorio portadorRepositorio, Clock clock) {
+    this.acessoAoPortador = acessoAoPortador;
     this.portadorRepositorio = portadorRepositorio;
     this.clock = clock;
   }
 
   @Transactional
-  public Portador executar(UUID id, StatusPortador novoStatus) {
-    Portador portador =
-        portadorRepositorio
-            .buscarPorId(id)
-            .orElseThrow(
-                () ->
-                    new RecursoNaoEncontradoException("Portador %s não encontrado".formatted(id)));
+  public Portador executar(UUID id, StatusPortador novoStatus, Solicitante solicitante) {
+    Portador portador = acessoAoPortador.obter(id, solicitante);
     Instant agora = Instant.now(clock);
     switch (novoStatus) {
       case ATIVO -> portador.ativar(agora);

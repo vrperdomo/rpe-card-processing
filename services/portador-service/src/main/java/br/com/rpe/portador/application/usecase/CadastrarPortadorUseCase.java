@@ -7,6 +7,7 @@ import br.com.rpe.portador.application.port.out.PortadorRepositorio;
 import br.com.rpe.portador.application.port.out.ProdutoClient;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.port.out.StatusProdutoExterno;
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.domain.Cpf;
 import br.com.rpe.portador.domain.Portador;
 import br.com.rpe.portador.domain.exception.ConflitoException;
@@ -43,13 +44,19 @@ public class CadastrarPortadorUseCase {
 
   @Transactional
   public Portador executar(
-      String nome, Cpf cpf, LocalDate dataNascimento, UUID produtoId, String correlationId) {
+      String nome,
+      Cpf cpf,
+      LocalDate dataNascimento,
+      UUID produtoId,
+      Solicitante solicitante,
+      String correlationId) {
     validarProdutoAtivo(produtoId);
     if (portadorRepositorio.existePorCpf(cpf.valor())) {
       throw new ConflitoException("Já existe um portador cadastrado com este CPF");
     }
     Instant agora = Instant.now(clock);
-    Portador portador = Portador.cadastrar(nome, cpf, dataNascimento, produtoId, agora);
+    Portador portador =
+        Portador.cadastrar(nome, cpf, dataNascimento, produtoId, solicitante.id(), agora);
     Portador salvo = portadorRepositorio.salvar(portador);
     outboxRepositorio.registrar(
         salvo.getId(), AGGREGATE_TYPE, criarEventoEmissao(salvo, correlationId, agora));
@@ -59,7 +66,10 @@ public class CadastrarPortadorUseCase {
   private EventoOutbox criarEventoEmissao(Portador portador, String correlationId, Instant agora) {
     CartaoEmissaoSolicitadaData data =
         new CartaoEmissaoSolicitadaData(
-            portador.getId(), portador.getProdutoId(), nomeImpresso(portador.getNome()));
+            portador.getId(),
+            portador.getProdutoId(),
+            nomeImpresso(portador.getNome()),
+            portador.getCriadoPor());
     return EventoOutbox.criar(EVENT_TYPE, correlationId, data, agora);
   }
 
