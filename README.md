@@ -134,6 +134,14 @@ A resposta traz um `accessToken` (Bearer) a ser usado em `Authorization: Bearer 
 chamadas aos três serviços. Usuário seed só existe em ambiente local/demo (sem cadastro de usuários
 nesta fase).
 
+**No frontend** (`http://localhost:3000`, mesmas credenciais): o token fica **só em memória** — nunca
+em `localStorage`, `sessionStorage` nem cookie —, então recarregar a página pede novo login. As
+rotas privadas redirecionam para `/login` e voltam ao destino original depois de entrar. Quando o
+token expira (ou o backend responde 401) a sessão é encerrada com um aviso, e "Sair" também
+descarta os dados em cache. Erros seguem o `ProblemDetail`: 401 mostra "Usuário ou senha
+inválidos", 429 informa o `Retry-After` do limite de tentativas, 503 e falha de rede têm mensagem
+própria, e o `correlationId` aparece como "código de suporte" para achar a requisição nos logs.
+
 Cada serviço também gera, internamente, um **token de serviço-para-serviço** (`EmissorTokenServico`,
 mesmo segredo) para chamar os outros serviços via `RestClient` — não é o mesmo token do usuário.
 
