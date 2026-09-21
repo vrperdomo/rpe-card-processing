@@ -19,6 +19,7 @@ import br.com.rpe.portador.application.port.out.CartaoDto;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.port.out.StatusCartaoExterno;
 import br.com.rpe.portador.application.port.out.StatusProdutoExterno;
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.application.usecase.AlterarStatusPortadorUseCase;
 import br.com.rpe.portador.application.usecase.BuscarPortadorCompletoUseCase;
 import br.com.rpe.portador.application.usecase.BuscarPortadorUseCase;
@@ -47,6 +48,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -76,6 +78,7 @@ class PortadorControllerTest {
   private static final Instant AGORA = Instant.parse("2026-09-19T12:00:00Z");
   private static final String CPF_VALIDO = "529.982.247-25";
   private static final UUID PRODUTO_ID = UUID.randomUUID();
+  private static final Solicitante ADMIN = Solicitante.deUsuario("admin");
 
   @Autowired private MockMvc mockMvc;
 
@@ -83,6 +86,11 @@ class PortadorControllerTest {
   @MockitoBean private BuscarPortadorUseCase buscarPortadorUseCase;
   @MockitoBean private BuscarPortadorCompletoUseCase buscarPortadorCompletoUseCase;
   @MockitoBean private AlterarStatusPortadorUseCase alterarStatusPortadorUseCase;
+
+  // JWT de usuário: o sub vira o Solicitante que o controller entrega ao caso de uso (ADR-009).
+  private static JwtRequestPostProcessor admin() {
+    return jwt().jwt(token -> token.subject("admin"));
+  }
 
   private String corpo(String cpf, String dataNascimento, String produtoId) {
     return """
@@ -95,19 +103,25 @@ class PortadorControllerTest {
   void deveCadastrarERetornar201ComLocationECpfMascarado() throws Exception {
     Portador portador =
         Portador.cadastrar(
-            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
     when(cadastrarPortadorUseCase.executar(
             eq("Victor Rodrigues"),
             eq(Cpf.of(CPF_VALIDO)),
             eq(LocalDate.of(2000, 1, 1)),
             eq(PRODUTO_ID),
+            eq(ADMIN),
             any()))
         .thenReturn(portador);
 
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo(CPF_VALIDO, "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isCreated())
@@ -130,7 +144,7 @@ class PortadorControllerTest {
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo("123", "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isBadRequest())
@@ -139,13 +153,13 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar422QuandoProdutoNaoEstaAtivo() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any(), any()))
         .thenThrow(new RegraNegocioException("Produto não está ATIVO"));
 
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo(CPF_VALIDO, "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isUnprocessableEntity());
@@ -153,13 +167,13 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar422QuandoMenorDeIdade() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any(), any()))
         .thenThrow(new RegraNegocioException("Portador deve ter pelo menos 18 anos completos"));
 
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo(CPF_VALIDO, "2015-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isUnprocessableEntity());
@@ -167,13 +181,13 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar409QuandoCpfDuplicado() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any(), any()))
         .thenThrow(new ConflitoException("CPF já cadastrado"));
 
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo(CPF_VALIDO, "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isConflict());
@@ -181,13 +195,13 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar409QuandoConstraintDeUnicidadeViolarNaCorrida() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any(), any()))
         .thenThrow(new DataIntegrityViolationException("uk_portador_cpf"));
 
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo(CPF_VALIDO, "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isConflict());
@@ -195,7 +209,7 @@ class PortadorControllerTest {
 
   @Test
   void deveRetornar503ComRetryAfterQuandoProdutoIndisponivel() throws Exception {
-    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any()))
+    when(cadastrarPortadorUseCase.executar(any(), any(), any(), any(), any(), any()))
         .thenThrow(
             new DependenciaIndisponivelException(
                 "Produto Service indisponível", Duration.ofSeconds(10)));
@@ -203,7 +217,7 @@ class PortadorControllerTest {
     mockMvc
         .perform(
             post("/api/v1/portadores")
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo(CPF_VALIDO, "2000-01-01", PRODUTO_ID.toString())))
         .andExpect(status().isServiceUnavailable())
@@ -214,11 +228,16 @@ class PortadorControllerTest {
   void deveBuscarPortadorPorIdComCpfMascarado() throws Exception {
     Portador portador =
         Portador.cadastrar(
-            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
-    when(buscarPortadorUseCase.executar(portador.getId())).thenReturn(portador);
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
+    when(buscarPortadorUseCase.executar(portador.getId(), ADMIN)).thenReturn(portador);
 
     mockMvc
-        .perform(get("/api/v1/portadores/{id}", portador.getId()).with(jwt()))
+        .perform(get("/api/v1/portadores/{id}", portador.getId()).with(admin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(portador.getId().toString()))
         .andExpect(jsonPath("$.cpf").value("***.982.247-**"));
@@ -227,11 +246,11 @@ class PortadorControllerTest {
   @Test
   void deveRetornar404QuandoPortadorNaoEncontrado() throws Exception {
     UUID id = UUID.randomUUID();
-    when(buscarPortadorUseCase.executar(id))
+    when(buscarPortadorUseCase.executar(id, ADMIN))
         .thenThrow(new RecursoNaoEncontradoException("Portador não encontrado"));
 
     mockMvc
-        .perform(get("/api/v1/portadores/{id}", id).with(jwt()))
+        .perform(get("/api/v1/portadores/{id}", id).with(admin()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.title").value("Recurso não encontrado"));
   }
@@ -240,15 +259,20 @@ class PortadorControllerTest {
   void deveAlterarStatusERetornarPortadorAtualizado() throws Exception {
     Portador portador =
         Portador.cadastrar(
-            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
     portador.bloquear(AGORA);
-    when(alterarStatusPortadorUseCase.executar(portador.getId(), StatusPortador.BLOQUEADO))
+    when(alterarStatusPortadorUseCase.executar(portador.getId(), StatusPortador.BLOQUEADO, ADMIN))
         .thenReturn(portador);
 
     mockMvc
         .perform(
             patch("/api/v1/portadores/{id}/status", portador.getId())
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -261,13 +285,13 @@ class PortadorControllerTest {
   @Test
   void deveRetornar422QuandoTransicaoDeStatusInvalida() throws Exception {
     UUID id = UUID.randomUUID();
-    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.ATIVO))
+    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.ATIVO, ADMIN))
         .thenThrow(new RegraNegocioException("Portador já está ativo"));
 
     mockMvc
         .perform(
             patch("/api/v1/portadores/{id}/status", id)
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -279,13 +303,13 @@ class PortadorControllerTest {
   @Test
   void deveRetornar409QuandoEscritaConcorrenteCausaOptimisticLock() throws Exception {
     UUID id = UUID.randomUUID();
-    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.CANCELADO))
+    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.CANCELADO, ADMIN))
         .thenThrow(new ObjectOptimisticLockingFailureException(Portador.class, id));
 
     mockMvc
         .perform(
             patch("/api/v1/portadores/{id}/status", id)
-                .with(jwt())
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -298,11 +322,16 @@ class PortadorControllerTest {
   void deveBuscarCompletoComCartaoEProduto() throws Exception {
     Portador portador =
         Portador.cadastrar(
-            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
     CartaoDto cartao =
         new CartaoDto(UUID.randomUUID(), "**** **** **** 1234", "09/31", StatusCartaoExterno.ATIVO);
     ProdutoDto produto = new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.ATIVO);
-    when(buscarPortadorCompletoUseCase.executar(portador.getId()))
+    when(buscarPortadorCompletoUseCase.executar(portador.getId(), ADMIN))
         .thenReturn(
             new PortadorCompleto(
                 portador,
@@ -312,7 +341,7 @@ class PortadorControllerTest {
                 List.of()));
 
     mockMvc
-        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(jwt()))
+        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(admin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.portador.cpf").value("***.982.247-**"))
         .andExpect(jsonPath("$.cartao.panMascarado").value("**** **** **** 1234"))
@@ -325,9 +354,14 @@ class PortadorControllerTest {
   void deveRetornarDegradadoComAvisoQuandoCartaoIndisponivel() throws Exception {
     Portador portador =
         Portador.cadastrar(
-            "Victor Rodrigues", Cpf.of(CPF_VALIDO), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
     ProdutoDto produto = new ProdutoDto(PRODUTO_ID, "Gold", "GOLD", StatusProdutoExterno.ATIVO);
-    when(buscarPortadorCompletoUseCase.executar(portador.getId()))
+    when(buscarPortadorCompletoUseCase.executar(portador.getId(), ADMIN))
         .thenReturn(
             new PortadorCompleto(
                 portador,
@@ -337,7 +371,7 @@ class PortadorControllerTest {
                 List.of("Cartão indisponível no momento")));
 
     mockMvc
-        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(jwt()))
+        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(admin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cartao").doesNotExist())
         .andExpect(jsonPath("$.emissao").value("DESCONHECIDA"))
@@ -347,11 +381,50 @@ class PortadorControllerTest {
   @Test
   void deveRetornar404NaConsultaCompletaQuandoPortadorNaoEncontrado() throws Exception {
     UUID id = UUID.randomUUID();
-    when(buscarPortadorCompletoUseCase.executar(id))
+    when(buscarPortadorCompletoUseCase.executar(id, ADMIN))
         .thenThrow(new RecursoNaoEncontradoException("Portador não encontrado"));
 
     mockMvc
-        .perform(get("/api/v1/portadores/{id}/completo", id).with(jwt()))
+        .perform(get("/api/v1/portadores/{id}/completo", id).with(admin()))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void deveRetornar404NaAlteracaoDeStatusQuandoSolicitanteNaoEDono() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(alterarStatusPortadorUseCase.executar(id, StatusPortador.CANCELADO, ADMIN))
+        .thenThrow(new RecursoNaoEncontradoException("Portador não encontrado"));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/portadores/{id}/status", id)
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"status":"CANCELADO"}
+                    """))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void deveEntregarTokenDeServicoAoCasoDeUsoComoSolicitanteDeServico() throws Exception {
+    Portador portador =
+        Portador.cadastrar(
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
+    when(buscarPortadorUseCase.executar(portador.getId(), Solicitante.deServico("cartao-service")))
+        .thenReturn(portador);
+
+    mockMvc
+        .perform(
+            get("/api/v1/portadores/{id}", portador.getId())
+                .with(
+                    jwt().jwt(token -> token.subject("cartao-service").claim("scope", "servico"))))
+        .andExpect(status().isOk());
   }
 }

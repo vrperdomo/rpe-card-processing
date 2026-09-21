@@ -297,8 +297,9 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
 **Revisão completa contra OWASP Top 10** (código real, categoria por categoria, com evidência):
 [ADR-009](docs/adr/009-revisao-seguranca-owasp.md). Lacunas reais assumidas conscientemente como
 backlog (risco baixo no contexto de um desafio local, sem exposição pública ou multiusuário real):
-sem autorização por posse de recurso (qualquer JWT válido acessa qualquer `portadorId`/`cartaoId`).
-Todo 401/403 de endpoint protegido gera um `WARN` (método, caminho, origem; nunca o token). **CORS:** não é necessário nem configurado nos serviços:
+autorização por posse de recurso. No Portador, só quem cadastrou (o `sub` do JWT) lê ou altera o
+portador; os demais recebem `404`. No Cartão, qualquer JWT válido ainda acessa qualquer `cartaoId`
+(em andamento, #121). Todo 401/403 de endpoint protegido gera um `WARN` (método, caminho, origem; nunca o token). **CORS:** não é necessário nem configurado nos serviços:
 o Nginx do frontend é a única origem do browser e faz proxy de `/api/v1/*` (o padrão do Spring, negar
 cross-origin, é o desejado) — ver [ADR-008](docs/adr/008-frontend-react-nginx.md). O frontend guarda o
 JWT só em memória e serve cabeçalhos de segurança (CSP restritiva, `X-Frame-Options: DENY` etc.).

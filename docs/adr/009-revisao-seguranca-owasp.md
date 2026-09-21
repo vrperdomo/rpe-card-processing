@@ -111,4 +111,30 @@ tabelas acima ficam como registro da revisão original; o estado atual é:
 - **Lacuna 4 (A05) — resolvida pelo [ADR-008](008-frontend-react-nginx.md).** Com o Nginx do
   frontend como proxy reverso o browser só fala com uma origem, então nenhum serviço precisa de
   CORS e o padrão do Spring (negar cross-origin) é o desejado. Não há lista de origens a manter.
-- **Lacuna 1 (A01)** segue como estava.
+- **Lacuna 1 (A01) — Portador corrigido; Cartão em andamento (#121).** O dono de um recurso é o
+  `sub` do JWT de quem cadastrou o portador.
+  - **Modelo.** Coluna `criado_por` (migração `V3`, `NOT NULL`, sem `DEFAULT` depois do backfill).
+    Um `Solicitante` (application, sem Spring) é extraído do JWT validado por `SolicitanteJwt`
+    (adapter web). `AcessoAoPortador` é o ponto único de leitura: `BuscarPortador`,
+    `AlterarStatusPortador` e `BuscarPortadorCompleto` passam por ele.
+  - **404, não 403, para quem não é dono.** A resposta é idêntica à de um id inexistente: um 403
+    revelaria que o id existe e permitiria enumerar portadores alheios. A tentativa fica em `WARN`
+    (`portadorId`, `solicitante`). No `/completo` a posse é checada **antes** de consultar Cartão e
+    Produto, então quem não é dono não dispara nenhuma chamada a jusante.
+  - **Token de serviço.** O Portador consulta o Cartão com um token próprio (`sub=portador-service`)
+    que agora leva `scope=servico`. Um `Solicitante` de serviço ignora a checagem de posse: quem o
+    chama já foi autorizado pelo serviço de origem. Sem isso, a checagem de posse do Cartão
+    (próximo PR) derrubaria o `/completo`. Um usuário não consegue forjar o escopo: o token de
+    usuário é emitido só em `/login`, que não o inclui, e a assinatura HS256 cobre as claims.
+  - **Dados anteriores à migração** recebem o dono `legado`, que nenhum usuário possui: falha
+    fechada (ninguém os acessa; um usuário chamado `legado` também não). Em produção seria preciso
+    um backfill com donos reais; no ambiente local, `docker compose down -v` recria tudo.
+  - **Evento.** `CartaoEmissaoSolicitada` passa a carregar `data.criadoPor`. É opcional no schema e
+    `eventVersion` continua 1: o campo é aditivo e o consumer do Cartão ignora campos
+    desconhecidos, então Portador e Cartão podem ser implantados em qualquer ordem. O Portador
+    sempre o publica (teste de contrato).
+  - **Ainda aberto:** o Cartão (`GET /cartoes/{id}`, `PATCH .../status` e a listagem por
+    `portadorId`) segue sem checagem de posse até o PR seguinte do #121. Como o Nginx expõe
+    `/api/v1/cartoes`, o IDOR continua possível **no Cartão** até lá.
+  - Limitação assumida: um único usuário seed. O modelo já é correto para multiusuário, mas só
+    há um `sub` real; os testes usam dois para provar o isolamento.

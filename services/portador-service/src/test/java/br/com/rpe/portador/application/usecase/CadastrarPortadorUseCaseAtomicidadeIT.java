@@ -14,6 +14,7 @@ import br.com.rpe.portador.application.port.out.OutboxRepositorio;
 import br.com.rpe.portador.application.port.out.ProdutoClient;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.port.out.StatusProdutoExterno;
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.config.ClockConfig;
 import br.com.rpe.portador.config.JpaAuditingConfig;
 import br.com.rpe.portador.domain.Cpf;
@@ -63,7 +64,12 @@ class CadastrarPortadorUseCaseAtomicidadeIT extends IntegrationTestBase {
     assertThatThrownBy(
             () ->
                 useCase.executar(
-                    "Victor", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, "corr-atomicidade"))
+                    "Victor",
+                    CPF,
+                    LocalDate.of(2000, 1, 1),
+                    PRODUTO_ID,
+                    Solicitante.deUsuario("admin"),
+                    "corr-atomicidade"))
         .isInstanceOf(IllegalStateException.class);
 
     // A exceção só marca a transação (compartilhada com o teste) como rollback-only; o rollback

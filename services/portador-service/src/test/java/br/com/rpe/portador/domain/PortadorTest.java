@@ -17,7 +17,8 @@ class PortadorTest {
   private static final UUID PRODUTO_ID = UUID.randomUUID();
 
   private Portador portadorAtivo() {
-    return Portador.cadastrar("Victor Rodrigues", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+    return Portador.cadastrar(
+        "Victor Rodrigues", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, "admin", AGORA);
   }
 
   @Test
@@ -36,7 +37,8 @@ class PortadorTest {
   void deveAceitarPortadorQueCompletouDezoitoAnosHoje() {
     LocalDate dataNascimento = LocalDate.of(2008, 9, 19);
 
-    Portador portador = Portador.cadastrar("Fulano", CPF, dataNascimento, PRODUTO_ID, AGORA);
+    Portador portador =
+        Portador.cadastrar("Fulano", CPF, dataNascimento, PRODUTO_ID, "admin", AGORA);
 
     assertThat(portador.getStatus()).isEqualTo(StatusPortador.ATIVO);
   }
@@ -46,22 +48,43 @@ class PortadorTest {
     LocalDate dataNascimentoMenorDeIdade = LocalDate.of(2008, 9, 20);
 
     assertThatThrownBy(
-            () -> Portador.cadastrar("Fulano", CPF, dataNascimentoMenorDeIdade, PRODUTO_ID, AGORA))
+            () ->
+                Portador.cadastrar(
+                    "Fulano", CPF, dataNascimentoMenorDeIdade, PRODUTO_ID, "admin", AGORA))
         .isInstanceOf(RegraNegocioException.class);
   }
 
   @Test
   void deveRejeitarNomeEmBranco() {
     assertThatThrownBy(
-            () -> Portador.cadastrar(" ", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA))
+            () ->
+                Portador.cadastrar(" ", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, "admin", AGORA))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void deveRejeitarProdutoIdNulo() {
     assertThatThrownBy(
-            () -> Portador.cadastrar("Fulano", CPF, LocalDate.of(2000, 1, 1), null, AGORA))
+            () -> Portador.cadastrar("Fulano", CPF, LocalDate.of(2000, 1, 1), null, "admin", AGORA))
         .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  void deveGuardarQuemCadastrouComoDono() {
+    assertThat(portadorAtivo().getCriadoPor()).isEqualTo("admin");
+  }
+
+  @Test
+  void deveRejeitarCriadoPorVazio() {
+    assertThatThrownBy(
+            () ->
+                Portador.cadastrar("Fulano", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, " ", AGORA))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                Portador.cadastrar(
+                    "Fulano", CPF, LocalDate.of(2000, 1, 1), PRODUTO_ID, null, AGORA))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -70,6 +93,7 @@ class PortadorTest {
 
     portador.bloquear(DEPOIS);
 
+    assertThat(portador.getCriadoPor()).isEqualTo("admin");
     assertThat(portador.getStatus()).isEqualTo(StatusPortador.BLOQUEADO);
     assertThat(portador.getAtualizadoEm()).isEqualTo(DEPOIS);
   }
@@ -136,6 +160,7 @@ class PortadorTest {
             CPF,
             LocalDate.of(2000, 1, 1),
             PRODUTO_ID,
+            "admin",
             StatusPortador.ATIVO,
             AGORA,
             AGORA);
@@ -146,6 +171,7 @@ class PortadorTest {
             CPF,
             LocalDate.of(1990, 5, 5),
             UUID.randomUUID(),
+            "outro",
             StatusPortador.BLOQUEADO,
             AGORA,
             AGORA);
@@ -161,10 +187,19 @@ class PortadorTest {
 
     Portador portador =
         Portador.reconstituir(
-            id, "Victor", CPF, dataNascimento, PRODUTO_ID, StatusPortador.BLOQUEADO, AGORA, DEPOIS);
+            id,
+            "Victor",
+            CPF,
+            dataNascimento,
+            PRODUTO_ID,
+            "admin",
+            StatusPortador.BLOQUEADO,
+            AGORA,
+            DEPOIS);
 
     assertThat(portador.getId()).isEqualTo(id);
     assertThat(portador.getDataNascimento()).isEqualTo(dataNascimento);
+    assertThat(portador.getCriadoPor()).isEqualTo("admin");
     assertThat(portador.getStatus()).isEqualTo(StatusPortador.BLOQUEADO);
     assertThat(portador.getAtualizadoEm()).isEqualTo(DEPOIS);
   }

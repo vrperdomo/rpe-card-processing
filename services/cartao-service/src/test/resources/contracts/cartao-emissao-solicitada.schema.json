@@ -19,7 +19,12 @@
       "properties": {
         "portadorId": { "type": "string", "format": "uuid" },
         "produtoId": { "type": "string", "format": "uuid" },
-        "nomeImpresso": { "type": "string", "minLength": 1 }
+        "nomeImpresso": { "type": "string", "minLength": 1 },
+        "criadoPor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "sub do JWT do usuario que cadastrou o portador; o Cartao o grava como dono do cartao (ADR-009, A01). Opcional no contrato: eventos publicados antes do #121 nao o trazem e o consumidor os trata como dono 'legado'. O Portador sempre o publica."
+        }
       }
     }
   }

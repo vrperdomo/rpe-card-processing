@@ -2,13 +2,12 @@ package br.com.rpe.portador.application.usecase;
 
 import br.com.rpe.portador.application.port.out.CartaoClient;
 import br.com.rpe.portador.application.port.out.CartaoDto;
-import br.com.rpe.portador.application.port.out.PortadorRepositorio;
 import br.com.rpe.portador.application.port.out.ProdutoClient;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.application.usecase.PortadorCompleto.StatusEmissao;
 import br.com.rpe.portador.domain.Portador;
 import br.com.rpe.portador.domain.exception.DependenciaIndisponivelException;
-import br.com.rpe.portador.domain.exception.RecursoNaoEncontradoException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,28 +28,22 @@ public class BuscarPortadorCompletoUseCase {
 
   private static final Logger log = LoggerFactory.getLogger(BuscarPortadorCompletoUseCase.class);
 
-  private final PortadorRepositorio portadorRepositorio;
+  private final AcessoAoPortador acessoAoPortador;
   private final CartaoClient cartaoClient;
   private final ProdutoClient produtoClient;
 
   public BuscarPortadorCompletoUseCase(
-      PortadorRepositorio portadorRepositorio,
-      CartaoClient cartaoClient,
-      ProdutoClient produtoClient) {
-    this.portadorRepositorio = portadorRepositorio;
+      AcessoAoPortador acessoAoPortador, CartaoClient cartaoClient, ProdutoClient produtoClient) {
+    this.acessoAoPortador = acessoAoPortador;
     this.cartaoClient = cartaoClient;
     this.produtoClient = produtoClient;
   }
 
+  // A posse é verificada ANTES de chamar Cartão e Produto: quem não é o dono nunca dispara as
+  // chamadas remotas (o Cartão é consultado com o token de serviço, que ignora a posse).
   @Transactional(readOnly = true)
-  public PortadorCompleto executar(UUID portadorId) {
-    Portador portador =
-        portadorRepositorio
-            .buscarPorId(portadorId)
-            .orElseThrow(
-                () ->
-                    new RecursoNaoEncontradoException(
-                        "Portador %s não encontrado".formatted(portadorId)));
+  public PortadorCompleto executar(UUID portadorId, Solicitante solicitante) {
+    Portador portador = acessoAoPortador.obter(portadorId, solicitante);
 
     List<String> avisos = new ArrayList<>();
 

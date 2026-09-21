@@ -41,7 +41,7 @@ class PortadorRepositorioJpaAdapterIT extends IntegrationTestBase {
 
   private Portador novoPortador(String cpf) {
     return Portador.cadastrar(
-        "Victor Rodrigues", Cpf.of(cpf), LocalDate.of(2000, 1, 1), PRODUTO_ID, AGORA);
+        "Victor Rodrigues", Cpf.of(cpf), LocalDate.of(2000, 1, 1), PRODUTO_ID, "admin", AGORA);
   }
 
   @Test
@@ -57,6 +57,7 @@ class PortadorRepositorioJpaAdapterIT extends IntegrationTestBase {
     assertThat(recuperado.getCpf()).isEqualTo(Cpf.of("52998224725"));
     assertThat(recuperado.getDataNascimento()).isEqualTo(LocalDate.of(2000, 1, 1));
     assertThat(recuperado.getProdutoId()).isEqualTo(PRODUTO_ID);
+    assertThat(recuperado.getCriadoPor()).isEqualTo("admin");
     assertThat(recuperado.getStatus()).isEqualTo(StatusPortador.ATIVO);
   }
 
@@ -74,6 +75,7 @@ class PortadorRepositorioJpaAdapterIT extends IntegrationTestBase {
 
     Portador recarregado = adapter.buscarPorId(portador.getId()).orElseThrow();
     assertThat(recarregado.getStatus()).isEqualTo(StatusPortador.BLOQUEADO);
+    assertThat(recarregado.getCriadoPor()).isEqualTo("admin");
   }
 
   @Test
