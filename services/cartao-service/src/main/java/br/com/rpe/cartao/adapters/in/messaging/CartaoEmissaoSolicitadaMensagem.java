@@ -14,7 +14,8 @@ public record CartaoEmissaoSolicitadaMensagem(
   public static final int EVENT_VERSION_SUPORTADA = 1;
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public record Dados(UUID portadorId, UUID produtoId, String nomeImpresso) {}
+  // criadoPor é opcional: eventos anteriores ao #121 não o trazem (ver EmitirCartaoUseCase).
+  public record Dados(UUID portadorId, UUID produtoId, String nomeImpresso, String criadoPor) {}
 
   public boolean valida() {
     return eventId != null

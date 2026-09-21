@@ -66,7 +66,8 @@ class ContratoEventosTest {
           "data": {
             "portadorId": "%s",
             "produtoId": "%s",
-            "nomeImpresso": "VICTOR RODRIGUES"
+            "nomeImpresso": "VICTOR RODRIGUES",
+            "criadoPor": "admin"
           }
         }
         """
@@ -77,6 +78,7 @@ class ContratoEventosTest {
     CartaoEmissaoSolicitadaMensagem mensagem =
         objectMapper.readValue(json, CartaoEmissaoSolicitadaMensagem.class);
     assertThat(mensagem.valida()).isTrue();
+    assertThat(mensagem.data().criadoPor()).isEqualTo("admin");
     assertThat(mensagem.eventId()).isEqualTo(eventId);
     assertThat(mensagem.data().portadorId()).isEqualTo(portadorId);
     assertThat(mensagem.data().produtoId()).isEqualTo(produtoId);

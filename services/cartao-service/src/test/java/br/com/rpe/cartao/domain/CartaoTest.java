@@ -20,6 +20,7 @@ class CartaoTest {
         Pan.gerar("453201"),
         "JOAO DA SILVA",
         Validade.gerar(AGORA),
+        "admin",
         AGORA);
   }
 
@@ -131,6 +132,7 @@ class CartaoTest {
                     Pan.gerar("453201"),
                     " ",
                     Validade.gerar(AGORA),
+                    "admin",
                     AGORA))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -147,6 +149,7 @@ class CartaoTest {
                     Pan.gerar("453201"),
                     nomeMuitoLongo,
                     Validade.gerar(AGORA),
+                    "admin",
                     AGORA))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -163,6 +166,7 @@ class CartaoTest {
             Pan.gerar("453201"),
             "JOAO DA SILVA",
             Validade.gerar(agora),
+            "admin",
             StatusCartao.ATIVO,
             agora,
             agora);
@@ -174,10 +178,33 @@ class CartaoTest {
             Pan.gerar("453201"),
             "MARIA SOUZA",
             Validade.gerar(agora),
+            "admin",
             StatusCartao.BLOQUEADO,
             agora,
             agora);
 
     assertThat(primeiro).isEqualTo(segundo);
+  }
+
+  @Test
+  void deveGuardarQuemCadastrouComoDono() {
+    assertThat(cartaoAtivo().getCriadoPor()).isEqualTo("admin");
+  }
+
+  @Test
+  void deveRejeitarCriadoPorVazio() {
+    for (String invalido : new String[] {null, " "}) {
+      assertThatThrownBy(
+              () ->
+                  Cartao.emitir(
+                      UUID.randomUUID(),
+                      UUID.randomUUID(),
+                      Pan.gerar("453201"),
+                      "VICTOR",
+                      Validade.gerar(AGORA),
+                      invalido,
+                      AGORA))
+          .isInstanceOf(IllegalArgumentException.class);
+    }
   }
 }

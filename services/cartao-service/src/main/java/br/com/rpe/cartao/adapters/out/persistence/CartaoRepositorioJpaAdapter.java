@@ -47,4 +47,12 @@ public class CartaoRepositorioJpaAdapter implements CartaoRepositorio {
   public Page<Cartao> buscarPorPortadorId(UUID portadorId, Pageable pageable) {
     return jpaRepository.findByPortadorId(portadorId, pageable).map(mapper::paraDominio);
   }
+
+  @Override
+  public Page<Cartao> buscarPorPortadorIdEDono(
+      UUID portadorId, String criadoPor, Pageable pageable) {
+    return jpaRepository
+        .findByPortadorIdAndCriadoPor(portadorId, criadoPor, pageable)
+        .map(mapper::paraDominio);
+  }
 }

@@ -12,4 +12,7 @@ public interface CartaoJpaRepository extends JpaRepository<CartaoEntity, UUID> {
   boolean existsByPanHash(String panHash);
 
   Page<CartaoEntity> findByPortadorId(UUID portadorId, Pageable pageable);
+
+  Page<CartaoEntity> findByPortadorIdAndCriadoPor(
+      UUID portadorId, String criadoPor, Pageable pageable);
 }

@@ -46,7 +46,13 @@ class CartaoRepositorioJpaAdapterIT extends IntegrationTestBase {
 
   private Cartao novoCartao(UUID portadorId, UUID produtoId, String pan) {
     return Cartao.emitir(
-        portadorId, produtoId, Pan.of(pan), "VICTOR RODRIGUES", Validade.gerar(AGORA), AGORA);
+        portadorId,
+        produtoId,
+        Pan.of(pan),
+        "VICTOR RODRIGUES",
+        Validade.gerar(AGORA),
+        "admin",
+        AGORA);
   }
 
   @Test
@@ -152,5 +158,57 @@ class CartaoRepositorioJpaAdapterIT extends IntegrationTestBase {
     assertThat(pagina.getTotalElements()).isEqualTo(2);
     assertThat(pagina.getContent())
         .allSatisfy(cartao -> assertThat(cartao.getPortadorId()).isEqualTo(portadorId));
+  }
+
+  private Cartao cartaoDe(UUID portadorId, String dono, String pan) {
+    return Cartao.emitir(
+        portadorId,
+        UUID.randomUUID(),
+        Pan.of(pan),
+        "VICTOR RODRIGUES",
+        Validade.gerar(AGORA),
+        dono,
+        AGORA);
+  }
+
+  @Test
+  void devePersistirODonoENaoOAlterarAoSalvarNovamente() {
+    Cartao salvo =
+        adapter.salvar(novoCartao(UUID.randomUUID(), UUID.randomUUID(), "4532015112830366"));
+    entityManager.flush();
+    entityManager.clear();
+
+    Cartao carregado = adapter.buscarPorId(salvo.getId()).orElseThrow();
+    assertThat(carregado.getCriadoPor()).isEqualTo("admin");
+    carregado.bloquear(AGORA);
+    adapter.salvar(carregado);
+    entityManager.flush();
+    entityManager.clear();
+
+    Cartao recarregado = adapter.buscarPorId(salvo.getId()).orElseThrow();
+    assertThat(recarregado.getStatus()).isEqualTo(StatusCartao.BLOQUEADO);
+    assertThat(recarregado.getCriadoPor()).isEqualTo("admin");
+  }
+
+  @Test
+  void deveListarApenasOsCartoesDoDonoNoPortador() {
+    UUID portadorId = UUID.randomUUID();
+    adapter.salvar(cartaoDe(portadorId, "admin", "4532015112830366"));
+    adapter.salvar(cartaoDe(portadorId, "admin", "4916338506082832"));
+    adapter.salvar(cartaoDe(portadorId, "outro", "4532015112830994"));
+    adapter.salvar(cartaoDe(UUID.randomUUID(), "admin", "4916338506082550"));
+    entityManager.flush();
+    entityManager.clear();
+
+    Page<Cartao> pagina =
+        adapter.buscarPorPortadorIdEDono(portadorId, "admin", PageRequest.of(0, 10));
+
+    assertThat(pagina.getTotalElements()).isEqualTo(2);
+    assertThat(pagina.getContent())
+        .allSatisfy(
+            cartao -> {
+              assertThat(cartao.getPortadorId()).isEqualTo(portadorId);
+              assertThat(cartao.getCriadoPor()).isEqualTo("admin");
+            });
   }
 }

@@ -295,11 +295,13 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
   nunca CPF ou PAN completos em log.
 
 **Revisão completa contra OWASP Top 10** (código real, categoria por categoria, com evidência):
-[ADR-009](docs/adr/009-revisao-seguranca-owasp.md). Lacunas reais assumidas conscientemente como
-backlog (risco baixo no contexto de um desafio local, sem exposição pública ou multiusuário real):
-autorização por posse de recurso. No Portador, só quem cadastrou (o `sub` do JWT) lê ou altera o
-portador; os demais recebem `404`. No Cartão, qualquer JWT válido ainda acessa qualquer `cartaoId`
-(em andamento, #121). Todo 401/403 de endpoint protegido gera um `WARN` (método, caminho, origem; nunca o token). **CORS:** não é necessário nem configurado nos serviços:
+[ADR-009](docs/adr/009-revisao-seguranca-owasp.md). As lacunas nomeadas na revisão foram todas
+fechadas (limite de tentativas de login, log de 401/403, posse de recurso e CORS). **Posse de
+recurso:** o dono de portador e cartão é quem cadastrou o portador (o `sub` do JWT); os demais
+recebem `404`, idêntico ao de um id inexistente (não permite enumerar IDs). O Portador consulta o
+Cartão com um token de serviço (`scope=servico`) que ignora a checagem de posse. Limitação
+assumida: há um único usuário seed, então o isolamento entre usuários é provado por teste, não
+exercitado na demo. Todo 401/403 de endpoint protegido gera um `WARN` (método, caminho, origem; nunca o token). **CORS:** não é necessário nem configurado nos serviços:
 o Nginx do frontend é a única origem do browser e faz proxy de `/api/v1/*` (o padrão do Spring, negar
 cross-origin, é o desejado) — ver [ADR-008](docs/adr/008-frontend-react-nginx.md). O frontend guarda o
 JWT só em memória e serve cabeçalhos de segurança (CSP restritiva, `X-Frame-Options: DENY` etc.).
