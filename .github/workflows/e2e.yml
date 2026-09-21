@@ -1,0 +1,95 @@
+name: e2e
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "pom.xml"
+      - "services/**"
+      - "docker-compose.yml"
+      - "Dockerfile"
+      - ".env.example"
+      - "docs/postman/**"
+      - "scripts/**"
+      - ".github/workflows/e2e.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "pom.xml"
+      - "services/**"
+      - "docker-compose.yml"
+      - "Dockerfile"
+      - ".env.example"
+      - "docs/postman/**"
+      - "scripts/**"
+      - ".github/workflows/e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke-postman:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Preparar .env (valores de desenvolvimento, sem segredos reais)
+        run: cp .env.example .env
+
+      - name: Subir a stack completa (docker compose)
+        run: docker compose up -d --build --wait
+
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: "22"
+
+      - name: Cadastrar produto e portador (dispara a emissão assíncrona do cartão)
+        run: |
+          npx --yes newman run docs/postman/RPE-Card-Processing.postman_collection.json \
+            -e docs/postman/RPE-Local.postman_environment.json \
+            --export-environment /tmp/rpe-env.json \
+            --folder "Fluxo de emissão de cartão" \
+            --delay-request 500
+
+      - name: Aguardar a emissão assíncrona concluir (polling, timeout 60s)
+        run: |
+          TOKEN=$(jq -r '.values[] | select(.key=="accessToken") | .value' /tmp/rpe-env.json)
+          PORTADOR_ID=$(jq -r '.values[] | select(.key=="portadorId") | .value' /tmp/rpe-env.json)
+          for i in $(seq 1 30); do
+            EMISSAO=$(curl -sf "http://localhost:8082/api/v1/portadores/$PORTADOR_ID/completo" \
+              -H "Authorization: Bearer $TOKEN" | jq -r .emissao)
+            echo "tentativa $i: emissao=$EMISSAO"
+            [ "$EMISSAO" = "CONCLUIDA" ] && exit 0
+            sleep 2
+          done
+          echo "Emissão não concluiu em 60s (ficou em '$EMISSAO')"
+          exit 1
+
+      - name: Rodar as demais pastas (Produto, Portador, Cartão)
+        run: |
+          npx --yes newman run docs/postman/RPE-Card-Processing.postman_collection.json \
+            -e /tmp/rpe-env.json \
+            --folder "Produto" \
+            --folder "Portador" \
+            --folder "Cartão" \
+            --delay-request 500
+
+      - name: Rodar os scripts de caos (SQS fora, Produto fora)
+        run: |
+          ./scripts/chaos-sqs-down.sh
+          ./scripts/chaos-produto-down.sh
+
+      - name: Logs dos serviços (só em caso de falha)
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Derrubar a stack
+        if: always()
+        run: docker compose down -v
