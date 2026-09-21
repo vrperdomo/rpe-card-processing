@@ -146,6 +146,28 @@ services:
       retries: 10
       start_period: 45s
 
+  # Frontend (ADR-008): Nginx serve a SPA e faz proxy reverso de /api/v1/* para os 3 serviços,
+  # então o browser fala com uma origem só (sem CORS). Sem segredos: o token JWT vive só na memória
+  # do browser.
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    depends_on:
+      produto-service:
+        condition: service_healthy
+      portador-service:
+        condition: service_healthy
+      cartao-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
 volumes:
   postgres-data:
   localstack-data:

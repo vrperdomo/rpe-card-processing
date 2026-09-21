@@ -36,8 +36,9 @@ Três microserviços independentes, cada um com seu próprio banco (database-per
 | **Produto** | Catálogo de produtos de cartão (Gold/Black/Platinum), auditoria, publica `ProdutoAtualizado` | 8081 |
 | **Portador** | Emite JWT, cadastra portadores (≥ 18 anos), dispara emissão de cartão via Outbox + SQS | 8082 |
 | **Cartão** | Domínio autoritativo do cartão: cifra o PAN, consome a fila de emissão, consulta e altera status | 8083 |
+| **Frontend** | SPA React servida por Nginx, que também é o proxy reverso de `/api/v1/*` (uma origem só, sem CORS) — [ADR-008](docs/adr/008-frontend-react-nginx.md) | 3000 |
 
-Todos expõem OpenAPI/Swagger, health checks (Actuator) e métricas Prometheus.
+Os 3 serviços expõem OpenAPI/Swagger, health checks (Actuator) e métricas Prometheus.
 
 ## Arquitetura
 
@@ -51,6 +52,7 @@ flowchart LR
         PO[Portador Service<br/>:8082]
         PR[Produto Service<br/>:8081]
         CA[Cartão Service<br/>:8083]
+        FE[Frontend Nginx<br/>:3000]
     end
 
     subgraph Infra
@@ -63,6 +65,11 @@ flowchart LR
     C -->|"CRUD produtos"| PR
     C -->|"cadastro, consulta completa"| PO
     C -->|"consulta/status cartão"| CA
+
+    C -->|"UI (browser)"| FE
+    FE -->|"proxy /api/v1/*"| PO
+    FE -->|"proxy /api/v1/produtos"| PR
+    FE -->|"proxy /api/v1/cartoes"| CA
 
     PO -->|"valida JWT"| PO
     PR -->|"resource server"| PO
@@ -93,8 +100,8 @@ cp .env.example .env
 docker compose up -d --build --wait
 ```
 
-Isso sobe Postgres (3 bancos), Redis, LocalStack (filas + DLQs já provisionadas) e os 3 serviços,
-aguardando todos os healthchecks ficarem `healthy`. Para derrubar:
+Isso sobe Postgres (3 bancos), Redis, LocalStack (filas + DLQs já provisionadas), os 3 serviços e o
+frontend (Nginx), aguardando todos os healthchecks ficarem `healthy`. Para derrubar:
 
 ```bash
 docker compose down -v
@@ -104,6 +111,7 @@ docker compose down -v
 
 | Serviço | URL |
 |---|---|
+| Frontend | http://localhost:3000 |
 | Produto (Swagger) | http://localhost:8081/swagger-ui.html |
 | Portador (Swagger) | http://localhost:8082/swagger-ui.html |
 | Cartão (Swagger) | http://localhost:8083/swagger-ui.html |
@@ -271,8 +279,10 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
 [ADR-009](docs/adr/009-revisao-seguranca-owasp.md). Lacunas reais assumidas conscientemente como
 backlog (risco baixo no contexto de um desafio local, sem exposição pública ou multiusuário real):
 sem autorização por posse de recurso (qualquer JWT válido acessa qualquer `portadorId`/`cartaoId`),
-401/403 de endpoints protegidos sem log, e CORS documentado mas não implementado em código (por
-ausência do frontend nesta entrega).
+e 401/403 de endpoints protegidos sem log. **CORS:** não é necessário nem configurado nos serviços:
+o Nginx do frontend é a única origem do browser e faz proxy de `/api/v1/*` (o padrão do Spring, negar
+cross-origin, é o desejado) — ver [ADR-008](docs/adr/008-frontend-react-nginx.md). O frontend guarda o
+JWT só em memória e serve cabeçalhos de segurança (CSP restritiva, `X-Frame-Options: DENY` etc.).
 
 **Login com limite de tentativas:** após 5 tentativas em 1 minuto sem sucesso, a origem (IP) recebe
 `429 Too Many Requests` com `Retry-After`, sem que a senha seja sequer verificada. Login correto
@@ -304,11 +314,15 @@ username digitado). Ajustável por `rpe.auth.login-limite.*` (ver ADR-009, atual
 - Scripts de caos (`./scripts/chaos-sqs-down.sh`, `./scripts/chaos-produto-down.sh`) validam a
   resiliência contra a stack real via `docker compose`, não mocks — ver seção
   [Resiliência](#resiliência).
+- Frontend (Vitest + Testing Library), a partir de `frontend/`:
+  `npm ci && npm run lint && npm run typecheck && npm test` (`npm run dev` sobe o Vite em
+  `http://localhost:5173` com o mesmo mapa de proxy do Nginx).
 
 ## CI
 
 Workflows em `.github/workflows/`: `ci-backend` (build + testes + cobertura por serviço, só o
-serviço alterado via `dorny/paths-filter`), `codeql`, `security` (Trivy + gitleaks +
+serviço alterado via `dorny/paths-filter`), `ci-frontend` (lint, typecheck, testes e build de
+`frontend/`, mais a construção da imagem Docker com `nginx -t`), `codeql`, `security` (Trivy + gitleaks +
 dependency-review), `pr-lint` (Conventional Commits + padrão de nome de branch), `e2e` (sobe a
 stack completa via `docker compose`, roda a Postman Collection com Newman fim a fim — cadastro,
 espera a emissão assíncrona concluir via polling, consultas — e os dois scripts de caos). Todo PR
