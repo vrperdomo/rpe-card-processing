@@ -40,6 +40,19 @@ Três microserviços independentes, cada um com seu próprio banco (database-per
 
 Os 3 serviços expõem OpenAPI/Swagger, health checks (Actuator) e métricas Prometheus.
 
+**Métricas (Prometheus).** `GET /actuator/prometheus` em cada serviço (8081, 8082, 8083), no formato de
+texto do Prometheus. Só o `health` é público: as métricas exigem o mesmo Bearer JWT dos demais
+endpoints (um scrape real precisaria configurar o token, ou liberar a rota numa rede interna).
+Métricas de negócio: `cartao_emitidos_total`, `cartao_dlq_enviados_total`,
+`cartao_emissao_falhas_total{tipo}`, `outbox_pendentes`, `outbox_falhas_total` e o hit/miss do cache
+de produto; os contadores só aparecem depois da primeira ocorrência.
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8082/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | jq -r .accessToken)
+curl -s http://localhost:8083/actuator/prometheus -H "Authorization: Bearer $TOKEN" | grep -E '^(cartao|jvm_memory_used)'
+```
+
 ## Arquitetura
 
 ```mermaid

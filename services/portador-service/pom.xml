@@ -30,6 +30,13 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <!-- Formato de exposição do /actuator/prometheus (issue #131). Versão gerenciada pelo BOM do
+         Spring Boot 3.5 (Micrometer 1.15.x); só o registry entra em runtime, não há API nova. -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+      <scope>runtime</scope>
+    </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
