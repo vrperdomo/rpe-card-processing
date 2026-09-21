@@ -303,9 +303,12 @@ documentado mas não implementado em código (por ausência do frontend nesta en
 
 Workflows em `.github/workflows/`: `ci-backend` (build + testes + cobertura por serviço, só o
 serviço alterado via `dorny/paths-filter`), `codeql`, `security` (Trivy + gitleaks +
-dependency-review), `pr-lint` (Conventional Commits + padrão de nome de branch). Todo PR passa
-pelos quatro workflows antes do merge; branch protection formal em `develop`/`main` ainda não foi
-configurada no GitHub (backlog).
+dependency-review), `pr-lint` (Conventional Commits + padrão de nome de branch), `e2e` (sobe a
+stack completa via `docker compose`, roda a Postman Collection com Newman fim a fim — cadastro,
+espera a emissão assíncrona concluir via polling, consultas — e os dois scripts de caos). Todo PR
+que toca `services/**`, `docker-compose.yml` ou `docs/postman/**` passa pelos cinco workflows antes
+do merge; branch protection formal em `develop`/`main` ainda não foi configurada no GitHub
+(backlog).
 
 ## Troubleshooting
 
