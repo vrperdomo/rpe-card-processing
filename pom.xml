@@ -33,8 +33,8 @@
     <!-- Versões fixadas conscientemente (ver CLAUDE.md secao 2).
          Atualizacoes via Dependabot, nunca "latest". -->
     <springdoc-openapi.version>2.8.17</springdoc-openapi.version>
-    <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
-    <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
+    <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
     <mapstruct.version>1.6.3</mapstruct.version>
     <resilience4j.version>2.4.0</resilience4j.version>
     <wiremock.version>3.13.2</wiremock.version>
