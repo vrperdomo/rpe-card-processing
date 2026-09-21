@@ -68,3 +68,36 @@ onde há lacuna real, ela é nomeada como lacuna, não escondida atrás de itens
 - Custo: este documento não substitui um pentest real nem uma análise de ameaças formal (STRIDE
   etc.) — é uma revisão de código dirigida por uma taxonomia conhecida, com o nível de rigor
   proporcional a um desafio técnico, não a um sistema em produção real.
+
+## Atualização de 21/09/2026 — lacunas 2 e 3 (parcial) corrigidas
+
+Depois do `v1.0.0`, o backlog foi reavaliado e o rate limiting de login deixou de ser adiado. As
+tabelas acima ficam como registro da revisão original; o estado atual é:
+
+- **Lacuna 2 (A04/A07) — corrigida.** `/api/v1/auth/login` limita **tentativas por IP de origem**
+  em uma janela deslizante (padrão: 5 em 1 min) e, ao estourar, responde `429` + `Retry-After`
+  (`ProblemDetail`) sem sequer verificar a senha. Login correto zera a contagem da origem, então
+  o usuário legítimo não é penalizado, e uma origem bloqueada não impede ninguém em outro IP.
+  Implementação: porta `ControleTentativasLogin` (application) + `ControleTentativasLoginEmMemoria`
+  (adapter, `Clock` injetado, mapa LRU limitado por `rpe.auth.login-limite.max-origens-rastreadas`).
+  - A tentativa é **reservada de forma atômica antes** de a senha ser verificada. A primeira
+    versão contava só depois da falha, e uma rajada paralela do mesmo IP passava inteira pela
+    checagem antes de qualquer falha ser registrada; há teste com 50 threads simultâneas provando
+    que só as 5 primeiras passam.
+  - Alternativa descartada: `@RateLimiter` do Resilience4j sobre o caso de uso. É um limite
+    **global** (5/min para todos, o que permite a um atacante trancar o único usuário seed para
+    sempre), acopla `application` a uma biblioteca de infraestrutura e não dá a chave por origem.
+    Também não foi necessária a dependência nova (Bucket4j) cogitada na alternativa 3.
+  - Limitação assumida: contadores em memória valem para **uma** instância do Portador (o desafio
+    roda uma). Com réplicas, o contador iria para o Redis.
+  - `server.forward-headers-strategy=native`: atrás do Nginx do frontend o Tomcat lê o
+    `X-Forwarded-For` só quando o proxy está em faixa privada; um cliente externo não consegue
+    forjar o cabeçalho para escapar do limite, mas quem acessa a porta 8082 pela rede do Docker
+    (faixa privada) ainda pode — aceitável em ambiente local.
+- **Lacuna 3 (A09) — corrigida em parte.** Toda falha de login gera um `WARN`
+  (`motivo=usuario-inexistente|senha-incorreta`, `origem=<ip>`) e o bloqueio de uma origem também.
+  O username digitado **não** é logado (entrada do cliente: injeção de log, e pode ser um CPF).
+  Continua em aberto: `JwtAuthEntryPoint`/`JwtAccessDeniedHandler` (401/403 em endpoints
+  protegidos) ainda não logam.
+- **Lacunas 1 (A01) e 4 (A05)** seguem como estavam. A 4 (CORS) deve ser resolvida junto do
+  frontend: com o Nginx como proxy reverso (ADR-008) o browser só fala com uma origem.

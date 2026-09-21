@@ -1,5 +1,9 @@
 server:
   port: 8082
+  # O limite de falhas de login é por IP de origem: atrás de um proxy (Nginx do frontend) o
+  # Tomcat precisa ler o X-Forwarded-For, senão todos os clientes pareceriam o mesmo IP. O modo
+  # "native" só confia no cabeçalho quando o proxy está em faixa privada (internal-proxies).
+  forward-headers-strategy: native
 
 logging:
   structured:
@@ -59,6 +63,11 @@ rpe:
     usuario-seed:
       username: ${AUTH_SEED_USERNAME:admin}
       password-hash: ${AUTH_SEED_PASSWORD_HASH:$2a$10$chtDohAzn/dxRYXDaaB.WOtw.kMjhnDhJHTbydDqYf31/27PTX7cq}
+    # ADR-009: após max-falhas logins malsucedidos na janela, a origem recebe 429 + Retry-After.
+    login-limite:
+      max-falhas: 5
+      janela: 1m
+      max-origens-rastreadas: 10000
   portador:
     produto-client:
       base-url: ${PRODUTO_SERVICE_URL:http://localhost:8081}

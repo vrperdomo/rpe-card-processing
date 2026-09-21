@@ -29,7 +29,11 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({JwtProperties.class, UsuarioSeedProperties.class})
+@EnableConfigurationProperties({
+  JwtProperties.class,
+  UsuarioSeedProperties.class,
+  LoginLimiteProperties.class
+})
 public class SecurityConfig {
 
   private static final String[] ENDPOINTS_PUBLICOS = {
