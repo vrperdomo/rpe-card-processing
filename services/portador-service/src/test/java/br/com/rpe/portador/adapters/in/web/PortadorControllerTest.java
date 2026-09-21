@@ -16,6 +16,7 @@ import br.com.rpe.portador.adapters.in.web.mapper.PortadorWebMapperImpl;
 import br.com.rpe.portador.adapters.in.web.security.JwtAccessDeniedHandler;
 import br.com.rpe.portador.adapters.in.web.security.JwtAuthEntryPoint;
 import br.com.rpe.portador.application.port.out.CartaoDto;
+import br.com.rpe.portador.application.port.out.FalhaEmissaoDto;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.port.out.StatusCartaoExterno;
 import br.com.rpe.portador.application.port.out.StatusProdutoExterno;
@@ -337,6 +338,7 @@ class PortadorControllerTest {
                 portador,
                 Optional.of(cartao),
                 Optional.of(produto),
+                Optional.empty(),
                 StatusEmissao.CONCLUIDA,
                 List.of()));
 
@@ -367,6 +369,7 @@ class PortadorControllerTest {
                 portador,
                 Optional.empty(),
                 Optional.of(produto),
+                Optional.empty(),
                 StatusEmissao.DESCONHECIDA,
                 List.of("Cartão indisponível no momento")));
 
@@ -426,5 +429,34 @@ class PortadorControllerTest {
                 .with(
                     jwt().jwt(token -> token.subject("cartao-service").claim("scope", "servico"))))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void deveRetornarEmissaoFalhouComMotivoEHorario() throws Exception {
+    Portador portador =
+        Portador.cadastrar(
+            "Victor Rodrigues",
+            Cpf.of(CPF_VALIDO),
+            LocalDate.of(2000, 1, 1),
+            PRODUTO_ID,
+            "admin",
+            AGORA);
+    when(buscarPortadorCompletoUseCase.executar(portador.getId(), ADMIN))
+        .thenReturn(
+            new PortadorCompleto(
+                portador,
+                Optional.empty(),
+                Optional.empty(),
+                Optional.of(new FalhaEmissaoDto("Produto inexistente ou não ATIVO", AGORA)),
+                StatusEmissao.FALHOU,
+                List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/portadores/{id}/completo", portador.getId()).with(admin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.emissao").value("FALHOU"))
+        .andExpect(jsonPath("$.cartao").doesNotExist())
+        .andExpect(jsonPath("$.falhaEmissao.motivo").value("Produto inexistente ou não ATIVO"))
+        .andExpect(jsonPath("$.falhaEmissao.ocorridaEm").value("2026-09-19T12:00:00Z"));
   }
 }

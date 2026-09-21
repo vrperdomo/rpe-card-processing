@@ -2,6 +2,7 @@ package br.com.rpe.portador.application.usecase;
 
 import br.com.rpe.portador.application.port.out.CartaoClient;
 import br.com.rpe.portador.application.port.out.CartaoDto;
+import br.com.rpe.portador.application.port.out.FalhaEmissaoDto;
 import br.com.rpe.portador.application.port.out.ProdutoClient;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.seguranca.Solicitante;
@@ -44,32 +45,44 @@ public class BuscarPortadorCompletoUseCase {
   @Transactional(readOnly = true)
   public PortadorCompleto executar(UUID portadorId, Solicitante solicitante) {
     Portador portador = acessoAoPortador.obter(portadorId, solicitante);
-
     List<String> avisos = new ArrayList<>();
+    EstadoDoCartao cartao = consultarCartao(portadorId, avisos);
+    Optional<ProdutoDto> produto = consultarProduto(portador, avisos);
+    return new PortadorCompleto(
+        portador, cartao.cartao(), produto, cartao.falha(), cartao.emissao(), avisos);
+  }
 
-    Optional<CartaoDto> cartao = Optional.empty();
-    boolean cartaoIndisponivel = false;
+  // Só pergunta pela falha quando NÃO há cartão: o caminho feliz continua com uma única chamada ao
+  // Cartão. Falhar em qualquer das duas consultas deixa o estado DESCONHECIDA: não dá para afirmar
+  // PENDENTE nem FALHOU sem saber o que o Cartão registrou.
+  private EstadoDoCartao consultarCartao(UUID portadorId, List<String> avisos) {
     try {
-      cartao = cartaoClient.buscarPorPortadorId(portadorId);
+      Optional<CartaoDto> cartao = cartaoClient.buscarPorPortadorId(portadorId);
+      if (cartao.isPresent()) {
+        return new EstadoDoCartao(cartao, Optional.empty(), StatusEmissao.CONCLUIDA);
+      }
+      Optional<FalhaEmissaoDto> falha = cartaoClient.buscarFalhaEmissao(portadorId);
+      return new EstadoDoCartao(
+          Optional.empty(),
+          falha,
+          falha.isPresent() ? StatusEmissao.FALHOU : StatusEmissao.PENDENTE);
     } catch (DependenciaIndisponivelException ex) {
-      cartaoIndisponivel = true;
       avisos.add("Cartão indisponível no momento");
       log.warn("Cartão Service indisponível ao montar consulta agregada de {}", portadorId);
+      return new EstadoDoCartao(Optional.empty(), Optional.empty(), StatusEmissao.DESCONHECIDA);
     }
+  }
 
-    Optional<ProdutoDto> produto = Optional.empty();
+  private Optional<ProdutoDto> consultarProduto(Portador portador, List<String> avisos) {
     try {
-      produto = produtoClient.buscarPorId(portador.getProdutoId());
+      return produtoClient.buscarPorId(portador.getProdutoId());
     } catch (DependenciaIndisponivelException ex) {
       avisos.add("Produto indisponível no momento");
-      log.warn("Produto Service indisponível ao montar consulta agregada de {}", portadorId);
+      log.warn("Produto Service indisponível ao montar consulta agregada de {}", portador.getId());
+      return Optional.empty();
     }
-
-    StatusEmissao emissao =
-        cartaoIndisponivel
-            ? StatusEmissao.DESCONHECIDA
-            : cartao.isPresent() ? StatusEmissao.CONCLUIDA : StatusEmissao.PENDENTE;
-
-    return new PortadorCompleto(portador, cartao, produto, emissao, avisos);
   }
+
+  private record EstadoDoCartao(
+      Optional<CartaoDto> cartao, Optional<FalhaEmissaoDto> falha, StatusEmissao emissao) {}
 }

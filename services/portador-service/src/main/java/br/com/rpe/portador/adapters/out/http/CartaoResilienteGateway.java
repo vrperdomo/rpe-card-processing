@@ -2,7 +2,9 @@ package br.com.rpe.portador.adapters.out.http;
 
 import br.com.rpe.portador.adapters.out.http.dto.CartaoHttpPaginaResponse;
 import br.com.rpe.portador.adapters.out.http.dto.CartaoHttpResponse;
+import br.com.rpe.portador.adapters.out.http.dto.FalhaEmissaoHttpResponse;
 import br.com.rpe.portador.application.port.out.CartaoDto;
+import br.com.rpe.portador.application.port.out.FalhaEmissaoDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
@@ -11,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 // Bean separado de CartaoHttpClient de propósito: self-invocation faz o proxy do Spring AOP
@@ -45,6 +48,32 @@ public class CartaoResilienteGateway {
         .filter(conteudo -> !conteudo.isEmpty())
         .map(conteudo -> conteudo.get(0))
         .map(this::paraDto);
+  }
+
+  // 404 significa "nenhuma falha registrada" (estado normal enquanto a emissão está pendente ou
+  // concluída) e não conta como falha do circuito: o CircuitBreaker só registra erro de conexão e
+  // 5xx.
+  @Retry(name = "cartao")
+  @CircuitBreaker(name = "cartao")
+  @TimeLimiter(name = "cartao")
+  public CompletableFuture<Optional<FalhaEmissaoDto>> buscarFalhaEmissao(UUID portadorId) {
+    return CompletableFuture.supplyAsync(
+        () -> chamarFalhaEmissao(portadorId), cartaoClientExecutor);
+  }
+
+  private Optional<FalhaEmissaoDto> chamarFalhaEmissao(UUID portadorId) {
+    try {
+      FalhaEmissaoHttpResponse resposta =
+          cartaoRestClient
+              .get()
+              .uri("/api/v1/emissao-falhas/{id}", portadorId)
+              .retrieve()
+              .body(FalhaEmissaoHttpResponse.class);
+      return Optional.ofNullable(resposta)
+          .map(r -> new FalhaEmissaoDto(r.motivo(), r.ocorridaEm()));
+    } catch (HttpClientErrorException.NotFound ex) {
+      return Optional.empty();
+    }
   }
 
   private CartaoDto paraDto(CartaoHttpResponse r) {

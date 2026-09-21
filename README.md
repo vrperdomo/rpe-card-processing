@@ -156,7 +156,9 @@ mesmo segredo) para chamar os outros serviços via `RestClient` — não é o me
    (Luhn, a partir do BIN do produto), cifra (AES-GCM) e persiste o cartão. Idempotente por
    `eventId` **e** pela constraint única `portador_id + produto_id`.
 4. `GET /api/v1/portadores/{id}/completo` (Portador) agrega Portador + Cartão + Produto numa única
-   resposta, com `emissao: PENDENTE | CONCLUIDA | DESCONHECIDA` conforme o estado observado.
+   resposta, com `emissao: PENDENTE | CONCLUIDA | FALHOU | DESCONHECIDA` conforme o estado
+   observado. `FALHOU` (a mensagem foi para a DLQ) vem com `falhaEmissao: { motivo, ocorridaEm }`;
+   `DESCONHECIDA` é o Cartão fora do ar (a consulta segue `200`, com `avisos`).
 
 ```bash
 # 1. login

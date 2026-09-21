@@ -89,7 +89,9 @@ public class PortadorController {
   @Operation(
       summary = "Busca portador + cartão + produto agregados (resposta degradável)",
       description =
-          "Só o dono lê. Retorna 404 se o portador não existir ou pertencer a outro usuário.")
+          "Só o dono lê. Retorna 404 se o portador não existir ou pertencer a outro usuário. O campo"
+              + " emissao é CONCLUIDA, PENDENTE, FALHOU (com falhaEmissao: motivo e horário) ou"
+              + " DESCONHECIDA (Cartão indisponível).")
   public PortadorCompletoResponse buscarCompleto(
       @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
     return completoMapper.paraResponse(
