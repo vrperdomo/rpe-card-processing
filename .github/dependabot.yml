@@ -23,3 +23,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      # init, analyze e upload-sarif do CodeQL precisam estar na MESMA versao: o analyze le a
+      # configuracao gravada pelo init e aborta se as versoes diferirem ("Loaded a configuration
+      # file for version X, but running version Y"). Em PRs separados (um por action) cada PR sobe
+      # so uma delas e o CodeQL falha em todos; agrupadas, chegam juntas em um unico PR.
+      codeql-action:
+        patterns:
+          - "github/codeql-action"
+          - "github/codeql-action/*"

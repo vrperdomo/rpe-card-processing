@@ -15,6 +15,7 @@ public class Cartao {
   private final Pan pan;
   private final String nomeImpresso;
   private final Validade validade;
+  private final String criadoPor;
   private StatusCartao status;
   private final Instant criadoEm;
   private Instant atualizadoEm;
@@ -26,6 +27,7 @@ public class Cartao {
       Pan pan,
       String nomeImpresso,
       Validade validade,
+      String criadoPor,
       StatusCartao status,
       Instant criadoEm,
       Instant atualizadoEm) {
@@ -35,6 +37,7 @@ public class Cartao {
     this.pan = Objects.requireNonNull(pan, "pan não pode ser nulo");
     this.nomeImpresso = validarNomeImpresso(nomeImpresso);
     this.validade = Objects.requireNonNull(validade, "validade não pode ser nula");
+    this.criadoPor = validarCriadoPor(criadoPor);
     this.status = Objects.requireNonNull(status, "status não pode ser nulo");
     this.criadoEm = Objects.requireNonNull(criadoEm, "criadoEm não pode ser nulo");
     this.atualizadoEm = Objects.requireNonNull(atualizadoEm, "atualizadoEm não pode ser nulo");
@@ -46,6 +49,7 @@ public class Cartao {
       Pan pan,
       String nomeImpresso,
       Validade validade,
+      String criadoPor,
       Instant agora) {
     return new Cartao(
         UUID.randomUUID(),
@@ -54,6 +58,7 @@ public class Cartao {
         pan,
         nomeImpresso,
         validade,
+        criadoPor,
         StatusCartao.ATIVO,
         agora,
         agora);
@@ -66,11 +71,21 @@ public class Cartao {
       Pan pan,
       String nomeImpresso,
       Validade validade,
+      String criadoPor,
       StatusCartao status,
       Instant criadoEm,
       Instant atualizadoEm) {
     return new Cartao(
-        id, portadorId, produtoId, pan, nomeImpresso, validade, status, criadoEm, atualizadoEm);
+        id,
+        portadorId,
+        produtoId,
+        pan,
+        nomeImpresso,
+        validade,
+        criadoPor,
+        status,
+        criadoEm,
+        atualizadoEm);
   }
 
   public void bloquear(Instant agora) {
@@ -108,6 +123,13 @@ public class Cartao {
     this.atualizadoEm = agora;
   }
 
+  private static String validarCriadoPor(String criadoPor) {
+    if (criadoPor == null || criadoPor.isBlank()) {
+      throw new IllegalArgumentException("criadoPor não pode ser vazio");
+    }
+    return criadoPor;
+  }
+
   private static String validarNomeImpresso(String nomeImpresso) {
     if (nomeImpresso == null || nomeImpresso.isBlank()) {
       throw new IllegalArgumentException("nomeImpresso não pode ser vazio");
@@ -142,6 +164,10 @@ public class Cartao {
 
   public Validade getValidade() {
     return validade;
+  }
+
+  public String getCriadoPor() {
+    return criadoPor;
   }
 
   public StatusCartao getStatus() {

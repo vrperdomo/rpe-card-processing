@@ -28,6 +28,7 @@ public class CartaoEntityMapper {
         pan.ultimos4(),
         cartao.getNomeImpresso(),
         cartao.getValidade().valor(),
+        cartao.getCriadoPor(),
         cartao.getStatus());
   }
 
@@ -44,6 +45,7 @@ public class CartaoEntityMapper {
         Pan.of(panEmClaro),
         entity.getNomeImpresso(),
         Validade.of(entity.getValidade()),
+        entity.getCriadoPor(),
         entity.getStatus(),
         entity.getCriadoEm(),
         entity.getAtualizadoEm());

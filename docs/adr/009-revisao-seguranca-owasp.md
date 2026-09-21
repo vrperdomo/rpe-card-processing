@@ -94,12 +94,56 @@ tabelas acima ficam como registro da revisão original; o estado atual é:
     `X-Forwarded-For` só quando o proxy está em faixa privada; um cliente externo não consegue
     forjar o cabeçalho para escapar do limite, mas quem acessa a porta 8082 pela rede do Docker
     (faixa privada) ainda pode — aceitável em ambiente local.
-- **Lacuna 3 (A09) — corrigida em parte.** Toda falha de login gera um `WARN`
+- **Lacuna 3 (A09) — corrigida.** Toda falha de login gera um `WARN`
   (`motivo=usuario-inexistente|senha-incorreta`, `origem=<ip>`) e o bloqueio de uma origem também.
   O username digitado **não** é logado (entrada do cliente: injeção de log, e pode ser um CPF).
-  Continua em aberto: `JwtAuthEntryPoint`/`JwtAccessDeniedHandler` (401/403 em endpoints
-  protegidos) ainda não logam.
+  Os 401/403 de endpoints protegidos também deixam rastro, nos 3 serviços:
+  - `JwtAuthEntryPoint` (401): `WARN` com `metodo`, `caminho`, `origem` e `motivo` (nome da classe
+    da exceção do Spring Security: token ausente, expirado, assinatura inválida...).
+  - `JwtAccessDeniedHandler` (403): `WARN` com `metodo`, `caminho`, `origem` e `usuario` (o `sub`
+    do JWT, já validado por assinatura, `iss` e `aud`; `desconhecido` se não houver principal).
+  - **Nunca** entram no log: o token, a query string (pode carregar dado sensível) e a mensagem da
+    exceção (o Spring a monta com trechos do token enviado pelo cliente). Os testes verificam isso.
+  - Alternativa descartada: um listener de eventos de autenticação do Spring Security
+    (`AuthenticationFailureBadCredentialsEvent` etc.). Os entry points já são o ponto único por
+    onde todo 401/403 passa e já existem nos 3 serviços; logar ali não exige componente novo nem
+    depende de o Spring publicar o evento para cada tipo de falha.
 - **Lacuna 4 (A05) — resolvida pelo [ADR-008](008-frontend-react-nginx.md).** Com o Nginx do
   frontend como proxy reverso o browser só fala com uma origem, então nenhum serviço precisa de
   CORS e o padrão do Spring (negar cross-origin) é o desejado. Não há lista de origens a manter.
-- **Lacuna 1 (A01)** segue como estava.
+- **Lacuna 1 (A01) — corrigida (#121).** O dono de um recurso é o `sub` do JWT de quem cadastrou o
+  portador; o cartão herda o dono do portador.
+  - **Modelo.** Coluna `criado_por` em `portador` e em `cartao` (migração `V3` em cada serviço,
+    `NOT NULL`, sem `DEFAULT` depois do backfill). Um `Solicitante` (application, sem Spring) é
+    extraído do JWT validado por `SolicitanteJwt` (adapter web). `AcessoAoPortador` e
+    `AcessoAoCartao` são o ponto único de leitura por id: `BuscarPortador`,
+    `AlterarStatusPortador`, `BuscarPortadorCompleto`, `BuscarCartao` e `AlterarStatusCartao`
+    passam por eles.
+  - **404, não 403, para quem não é dono.** A resposta é idêntica à de um id inexistente: um 403
+    revelaria que o id existe e permitiria enumerar portadores alheios. A tentativa fica em `WARN`
+    (`portadorId`, `solicitante`). No `/completo` a posse é checada **antes** de consultar Cartão e
+    Produto, então quem não é dono não dispara nenhuma chamada a jusante.
+  - **Token de serviço.** O Portador consulta o Cartão com um token próprio (`sub=portador-service`)
+    que agora leva `scope=servico`. Um `Solicitante` de serviço ignora a checagem de posse: quem o
+    chama já foi autorizado pelo serviço de origem. Sem isso, a checagem de posse do Cartão
+    derrubaria o `/completo`. Um usuário não consegue forjar o escopo: o token de usuário é
+    emitido só em `/login`, que não o inclui, e a assinatura HS256 cobre as claims. A confiança é
+    a do segredo HS256 compartilhado: quem o possui já emite qualquer token (limitação do ADR-004).
+  - **Dados anteriores à migração** recebem o dono `legado`, que nenhum usuário possui: falha
+    fechada (ninguém os acessa; um usuário chamado `legado` também não). Em produção seria preciso
+    um backfill com donos reais; no ambiente local, `docker compose down -v` recria tudo.
+  - **Evento.** `CartaoEmissaoSolicitada` carrega `data.criadoPor`, gravado como dono do cartão.
+    É opcional no schema e `eventVersion` continua 1: o campo é aditivo e o consumer ignora campos
+    desconhecidos, então Portador e Cartão podem ser implantados em qualquer ordem. O Portador
+    sempre o publica (teste de contrato). O Cartão é leitor tolerante: um evento antigo, sem
+    `criadoPor`, emite o cartão com dono `legado` (WARN) em vez de ir para a DLQ e nunca emitir.
+  - **Cartão.** `GET /cartoes/{id}` e `PATCH .../status` respondem 404 a quem não é dono. A
+    listagem `GET /cartoes?portadorId=` filtra **no banco** por dono (`total` e páginas refletem
+    só o que o usuário pode ver); para quem não é dono ela devolve uma página vazia, não 404,
+    porque o parâmetro é um filtro e não o recurso. O token de serviço lista sem filtro. A
+    tentativa em listagem não gera log, pois não há como distinguir "outro dono" de "sem cartões"
+    sem uma segunda consulta.
+  - **Como o Nginx expõe `/api/v1/cartoes`**, o Cartão é alcançável direto pelo browser; por isso a
+    checagem vale nos dois serviços, não só no Portador.
+  - Limitação assumida: um único usuário seed. O modelo já é correto para multiusuário, mas só
+    há um `sub` real; os testes usam dois para provar o isolamento.

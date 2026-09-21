@@ -7,5 +7,6 @@ public record PortadorCompletoResponse(
     PortadorResponse portador,
     CartaoResumoResponse cartao,
     ProdutoResumoResponse produto,
+    FalhaEmissaoResponse falhaEmissao,
     StatusEmissao emissao,
     List<String> avisos) {}

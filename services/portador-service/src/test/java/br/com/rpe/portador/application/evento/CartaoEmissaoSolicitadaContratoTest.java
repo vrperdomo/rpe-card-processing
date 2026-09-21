@@ -29,7 +29,8 @@ class CartaoEmissaoSolicitadaContratoTest {
   @Test
   void eventoDoOutboxRespeitaOContrato() throws Exception {
     CartaoEmissaoSolicitadaData data =
-        new CartaoEmissaoSolicitadaData(UUID.randomUUID(), UUID.randomUUID(), "VICTOR RODRIGUES");
+        new CartaoEmissaoSolicitadaData(
+            UUID.randomUUID(), UUID.randomUUID(), "VICTOR RODRIGUES", "admin");
     EventoOutbox evento =
         EventoOutbox.criar(EVENT_TYPE, UUID.randomUUID().toString(), data, Instant.now());
 
@@ -39,6 +40,8 @@ class CartaoEmissaoSolicitadaContratoTest {
     Set<ValidationMessage> violacoes = carregarSchema().validate(node);
 
     assertThat(violacoes).as("Violações do contrato: %s", violacoes).isEmpty();
+    // Opcional no schema (eventos antigos), mas o Portador sempre o publica (ADR-009, A01).
+    assertThat(node.at("/data/criadoPor").asText()).isEqualTo("admin");
   }
 
   private JsonSchema carregarSchema() throws Exception {

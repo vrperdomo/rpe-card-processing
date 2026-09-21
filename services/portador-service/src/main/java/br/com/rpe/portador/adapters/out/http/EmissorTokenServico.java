@@ -1,5 +1,6 @@
 package br.com.rpe.portador.adapters.out.http;
 
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.config.JwtProperties;
 import java.time.Clock;
 import java.time.Duration;
@@ -13,7 +14,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Component;
 
 // Token de serviço-para-serviço (Portador -> Produto), assinado com o mesmo segredo que o Produto
-// já valida como resource server. Distinto do token de usuário emitido em /api/v1/auth/login.
+// já valida como resource server. Distinto do token de usuário emitido em /api/v1/auth/login: leva
+// o escopo "servico", com o qual o Cartão dispensa a checagem de posse do recurso (ADR-009, A01).
 @Component
 public class EmissorTokenServico {
 
@@ -37,6 +39,7 @@ public class EmissorTokenServico {
             .issuer(properties.issuer())
             .audience(List.of(properties.audience()))
             .subject(SUBJECT_SERVICO)
+            .claim("scope", Solicitante.ESCOPO_SERVICO)
             .issuedAt(agora)
             .expiresAt(agora.plus(EXPIRACAO))
             .build();

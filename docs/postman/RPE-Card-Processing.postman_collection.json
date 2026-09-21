@@ -330,6 +330,38 @@
             "description": "status: ATIVO | BLOQUEADO | CANCELADO."
           },
           "response": []
+        },
+        {
+          "name": "Buscar Falha de Emissão do Portador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (emissão falhou) ou 404 (sem falha registrada)', () => pm.expect([200, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('Traz o motivo e não expõe o dono', () => {",
+                  "    pm.expect(json.motivo).to.be.a('string');",
+                  "    pm.expect(json).to.not.have.property('criadoPor');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlCartao}}/api/v1/emissao-falhas/{{portadorId}}",
+              "host": ["{{baseUrlCartao}}"],
+              "path": ["api", "v1", "emissao-falhas", "{{portadorId}}"]
+            },
+            "description": "Uso interno do Portador na consulta agregada (o Nginx do frontend não o expõe). 404 é o esperado quando a emissão está pendente ou concluída; 200 quando a mensagem foi para a DLQ (produto inexistente/cancelado ou tentativas esgotadas)."
+          },
+          "response": []
         }
       ]
     }

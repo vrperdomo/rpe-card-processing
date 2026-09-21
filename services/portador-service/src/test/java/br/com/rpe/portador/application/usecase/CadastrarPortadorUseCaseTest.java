@@ -16,6 +16,7 @@ import br.com.rpe.portador.application.port.out.PortadorRepositorio;
 import br.com.rpe.portador.application.port.out.ProdutoClient;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.port.out.StatusProdutoExterno;
+import br.com.rpe.portador.application.seguranca.Solicitante;
 import br.com.rpe.portador.domain.Cpf;
 import br.com.rpe.portador.domain.Portador;
 import br.com.rpe.portador.domain.StatusPortador;
@@ -37,6 +38,7 @@ class CadastrarPortadorUseCaseTest {
   private static final UUID PRODUTO_ID = UUID.randomUUID();
   private static final LocalDate DATA_NASCIMENTO_MAIOR_DE_IDADE = LocalDate.of(2000, 1, 1);
   private static final String CORRELATION_ID = "corr-123";
+  private static final Solicitante SOLICITANTE = Solicitante.deUsuario("admin");
 
   private final PortadorRepositorio repositorio = mock(PortadorRepositorio.class);
   private final ProdutoClient produtoClient = mock(ProdutoClient.class);
@@ -58,10 +60,12 @@ class CadastrarPortadorUseCaseTest {
     when(repositorio.salvar(any(Portador.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
     Portador portador =
-        useCase.executar("Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, CORRELATION_ID);
+        useCase.executar(
+            "Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, SOLICITANTE, CORRELATION_ID);
 
     assertThat(portador.getStatus()).isEqualTo(StatusPortador.ATIVO);
     assertThat(portador.getCpf()).isEqualTo(CPF);
+    assertThat(portador.getCriadoPor()).isEqualTo("admin");
     verify(repositorio).salvar(any(Portador.class));
   }
 
@@ -72,7 +76,8 @@ class CadastrarPortadorUseCaseTest {
     when(repositorio.salvar(any(Portador.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
     Portador portador =
-        useCase.executar("Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, CORRELATION_ID);
+        useCase.executar(
+            "Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, SOLICITANTE, CORRELATION_ID);
 
     ArgumentCaptor<EventoOutbox> eventoCaptor = ArgumentCaptor.forClass(EventoOutbox.class);
     verify(outboxRepositorio)
@@ -87,6 +92,7 @@ class CadastrarPortadorUseCaseTest {
     assertThat(data.portadorId()).isEqualTo(portador.getId());
     assertThat(data.produtoId()).isEqualTo(PRODUTO_ID);
     assertThat(data.nomeImpresso()).isEqualTo("VICTOR");
+    assertThat(data.criadoPor()).isEqualTo("admin");
   }
 
   @Test
@@ -100,6 +106,7 @@ class CadastrarPortadorUseCaseTest {
         CPF,
         DATA_NASCIMENTO_MAIOR_DE_IDADE,
         PRODUTO_ID,
+        SOLICITANTE,
         CORRELATION_ID);
 
     ArgumentCaptor<EventoOutbox> eventoCaptor = ArgumentCaptor.forClass(EventoOutbox.class);
@@ -115,7 +122,12 @@ class CadastrarPortadorUseCaseTest {
     assertThatThrownBy(
             () ->
                 useCase.executar(
-                    "Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, CORRELATION_ID))
+                    "Victor",
+                    CPF,
+                    DATA_NASCIMENTO_MAIOR_DE_IDADE,
+                    PRODUTO_ID,
+                    SOLICITANTE,
+                    CORRELATION_ID))
         .isInstanceOf(RegraNegocioException.class);
     verify(repositorio, never()).salvar(any());
     verify(outboxRepositorio, never()).registrar(any(), any(), any());
@@ -131,7 +143,12 @@ class CadastrarPortadorUseCaseTest {
     assertThatThrownBy(
             () ->
                 useCase.executar(
-                    "Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, CORRELATION_ID))
+                    "Victor",
+                    CPF,
+                    DATA_NASCIMENTO_MAIOR_DE_IDADE,
+                    PRODUTO_ID,
+                    SOLICITANTE,
+                    CORRELATION_ID))
         .isInstanceOf(RegraNegocioException.class);
     verify(repositorio, never()).salvar(any());
   }
@@ -144,7 +161,12 @@ class CadastrarPortadorUseCaseTest {
     assertThatThrownBy(
             () ->
                 useCase.executar(
-                    "Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, CORRELATION_ID))
+                    "Victor",
+                    CPF,
+                    DATA_NASCIMENTO_MAIOR_DE_IDADE,
+                    PRODUTO_ID,
+                    SOLICITANTE,
+                    CORRELATION_ID))
         .isInstanceOf(ConflitoException.class);
     verify(repositorio, never()).salvar(any());
     verify(outboxRepositorio, never()).registrar(any(), any(), any());
@@ -157,7 +179,12 @@ class CadastrarPortadorUseCaseTest {
     assertThatThrownBy(
         () ->
             useCase.executar(
-                "Victor", CPF, DATA_NASCIMENTO_MAIOR_DE_IDADE, PRODUTO_ID, CORRELATION_ID));
+                "Victor",
+                CPF,
+                DATA_NASCIMENTO_MAIOR_DE_IDADE,
+                PRODUTO_ID,
+                SOLICITANTE,
+                CORRELATION_ID));
 
     verify(repositorio, never()).existePorCpf(any());
   }

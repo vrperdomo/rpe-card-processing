@@ -156,7 +156,9 @@ mesmo segredo) para chamar os outros serviços via `RestClient` — não é o me
    (Luhn, a partir do BIN do produto), cifra (AES-GCM) e persiste o cartão. Idempotente por
    `eventId` **e** pela constraint única `portador_id + produto_id`.
 4. `GET /api/v1/portadores/{id}/completo` (Portador) agrega Portador + Cartão + Produto numa única
-   resposta, com `emissao: PENDENTE | CONCLUIDA | DESCONHECIDA` conforme o estado observado.
+   resposta, com `emissao: PENDENTE | CONCLUIDA | FALHOU | DESCONHECIDA` conforme o estado
+   observado. `FALHOU` (a mensagem foi para a DLQ) vem com `falhaEmissao: { motivo, ocorridaEm }`;
+   `DESCONHECIDA` é o Cartão fora do ar (a consulta segue `200`, com `avisos`).
 
 ```bash
 # 1. login
@@ -189,8 +191,9 @@ escolhido numa lista; ao cadastrar, abre o **detalhe do portador**, que consulta
 `GET /portadores/{id}/completo` sozinho (a cada 2 s enquanto a emissão está `PENDENTE`) até o cartão
 aparecer, com o número sempre mascarado. Se o serviço de Cartão ou o de Produto estiver fora do ar,
 a tela continua mostrando o que tem, com os `avisos` da resposta degradada, e passa a consultar mais
-devagar (5 s). Como o backend não tem estado de falha na emissão (uma mensagem que vai para a DLQ
-continua `PENDENTE`), o polling **desiste após 2 minutos** e explica; "Atualizar" consulta de novo
+devagar (5 s). Se a mensagem de emissão for para a DLQ, a tela mostra **"Não foi possível emitir o
+cartão"** com o motivo e o horário (estado `FALHOU`, final: não há polling). Enquanto a emissão está
+`PENDENTE` mas demora, o polling **desiste após 2 minutos** e explica; "Atualizar" consulta de novo
 a qualquer momento. Não há listagem de portadores na API, então o detalhe também abre pelo
 identificador na página inicial. Cadastro de produto continua pelo Swagger/Postman.
 
@@ -273,6 +276,13 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
 | **Transitório** | Produto Service indisponível (circuito aberto/timeout) | Mensagem não é confirmada → SQS reentrega até `maxReceiveCount` → DLQ automática |
 | **Definitivo** | Produto inexistente/`CANCELADO`, payload ilegível, schema/versão incompatível | Envio direto para a DLQ com motivo (`erro-motivo`), sem redelivery |
 
+**Falha de emissão registrada.** Quando a mensagem termina na DLQ (definitiva, ou transitória na
+última entrega do SQS, reconhecida por `ApproximateReceiveCount >= maxReceiveCount`), o Cartão grava
+a falha (portador, motivo, dono) em `emissao_falha`. Uma emissão bem-sucedida a apaga.
+`maxReceiveCount` (`CARTAO_EMISSAO_MAX_RECEIVE_COUNT`, padrão 3) deve coincidir com o redrive da fila
+em `infra/localstack/init-queues.sh`. Métrica: `cartao.emissao.falhas{tipo}`. Detalhes no
+[ADR-006](docs/adr/006-retry-dlq-idempotencia.md).
+
 ## Segurança
 
 - **Segredos:** nunca commitados — só via `.env` (ignorado pelo Git) e `.env.example` com valores
@@ -295,10 +305,13 @@ confirma que a consulta volta a `200` assim que o circuito fecha.
   nunca CPF ou PAN completos em log.
 
 **Revisão completa contra OWASP Top 10** (código real, categoria por categoria, com evidência):
-[ADR-009](docs/adr/009-revisao-seguranca-owasp.md). Lacunas reais assumidas conscientemente como
-backlog (risco baixo no contexto de um desafio local, sem exposição pública ou multiusuário real):
-sem autorização por posse de recurso (qualquer JWT válido acessa qualquer `portadorId`/`cartaoId`),
-e 401/403 de endpoints protegidos sem log. **CORS:** não é necessário nem configurado nos serviços:
+[ADR-009](docs/adr/009-revisao-seguranca-owasp.md). As lacunas nomeadas na revisão foram todas
+fechadas (limite de tentativas de login, log de 401/403, posse de recurso e CORS). **Posse de
+recurso:** o dono de portador e cartão é quem cadastrou o portador (o `sub` do JWT); os demais
+recebem `404`, idêntico ao de um id inexistente (não permite enumerar IDs). O Portador consulta o
+Cartão com um token de serviço (`scope=servico`) que ignora a checagem de posse. Limitação
+assumida: há um único usuário seed, então o isolamento entre usuários é provado por teste, não
+exercitado na demo. Todo 401/403 de endpoint protegido gera um `WARN` (método, caminho, origem; nunca o token). **CORS:** não é necessário nem configurado nos serviços:
 o Nginx do frontend é a única origem do browser e faz proxy de `/api/v1/*` (o padrão do Spring, negar
 cross-origin, é o desejado) — ver [ADR-008](docs/adr/008-frontend-react-nginx.md). O frontend guarda o
 JWT só em memória e serve cabeçalhos de segurança (CSP restritiva, `X-Frame-Options: DENY` etc.).
@@ -364,6 +377,7 @@ do merge; branch protection formal em `develop`/`main` ainda não foi configurad
 
 | Versão | Conteúdo |
 |---|---|
+| **v1.2.0** | Segurança: posse de recurso (só o dono acessa portador e cartão; `404` idêntico ao de id inexistente) e log de 401/403 (ADR-009). Estado de falha da emissão: o Cartão registra a falha quando a mensagem vai para a DLQ e o `/completo` e a tela do portador passam a mostrar `FALHOU` com motivo, em vez de `PENDENTE` para sempre (ADR-006) |
 | **v1.1.0** | Frontend React (login, cadastro de portador, detalhe com polling da emissão), limite de tentativas no login (429), logs estruturados em JSON, contratos de evento em JSON Schema, ArchUnit, scripts de caos, Postman/Newman, workflow e2e |
 | **v1.0.0** | Backend completo: 3 microsserviços, Outbox + SQS com retry/DLQ e idempotência, cache Redis, Resilience4j, Docker Compose, README e ADRs |
 

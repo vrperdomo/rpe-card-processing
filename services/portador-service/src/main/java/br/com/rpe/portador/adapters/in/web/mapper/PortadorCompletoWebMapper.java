@@ -1,9 +1,11 @@
 package br.com.rpe.portador.adapters.in.web.mapper;
 
 import br.com.rpe.portador.adapters.in.web.dto.CartaoResumoResponse;
+import br.com.rpe.portador.adapters.in.web.dto.FalhaEmissaoResponse;
 import br.com.rpe.portador.adapters.in.web.dto.PortadorCompletoResponse;
 import br.com.rpe.portador.adapters.in.web.dto.ProdutoResumoResponse;
 import br.com.rpe.portador.application.port.out.CartaoDto;
+import br.com.rpe.portador.application.port.out.FalhaEmissaoDto;
 import br.com.rpe.portador.application.port.out.ProdutoDto;
 import br.com.rpe.portador.application.usecase.PortadorCompleto;
 import org.springframework.stereotype.Component;
@@ -25,6 +27,7 @@ public class PortadorCompletoWebMapper {
         portadorWebMapper.paraResponse(completo.portador()),
         completo.cartao().map(this::paraResumoCartao).orElse(null),
         completo.produto().map(this::paraResumoProduto).orElse(null),
+        completo.falhaEmissao().map(this::paraFalhaEmissao).orElse(null),
         completo.emissao(),
         completo.avisos());
   }
@@ -32,6 +35,10 @@ public class PortadorCompletoWebMapper {
   private CartaoResumoResponse paraResumoCartao(CartaoDto cartao) {
     return new CartaoResumoResponse(
         cartao.id(), cartao.panMascarado(), cartao.validade(), cartao.status());
+  }
+
+  private FalhaEmissaoResponse paraFalhaEmissao(FalhaEmissaoDto falha) {
+    return new FalhaEmissaoResponse(falha.motivo(), falha.ocorridaEm());
   }
 
   private ProdutoResumoResponse paraResumoProduto(ProdutoDto produto) {

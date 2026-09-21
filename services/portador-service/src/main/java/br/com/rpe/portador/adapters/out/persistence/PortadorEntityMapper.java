@@ -14,6 +14,7 @@ public interface PortadorEntityMapper {
         portador.getCpf().valor(),
         portador.getDataNascimento(),
         portador.getProdutoId(),
+        portador.getCriadoPor(),
         portador.getStatus());
   }
 
@@ -29,6 +30,7 @@ public interface PortadorEntityMapper {
         Cpf.of(entity.getCpf()),
         entity.getDataNascimento(),
         entity.getProdutoId(),
+        entity.getCriadoPor(),
         entity.getStatus(),
         entity.getCriadoEm(),
         entity.getAtualizadoEm());

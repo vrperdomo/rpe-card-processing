@@ -59,9 +59,19 @@ const produtoResumoSchema = z.object({
 })
 
 // Valor novo vindo do backend cai em DESCONHECIDA em vez de quebrar a tela.
-export const statusEmissaoSchema = z.enum(['CONCLUIDA', 'PENDENTE', 'DESCONHECIDA']).catch('DESCONHECIDA')
+export const statusEmissaoSchema = z
+  .enum(['CONCLUIDA', 'PENDENTE', 'FALHOU', 'DESCONHECIDA'])
+  .catch('DESCONHECIDA')
 
 export type StatusEmissao = z.infer<typeof statusEmissaoSchema>
+
+// Só vem quando emissao é FALHOU. O motivo já chega do backend como texto seguro para exibir.
+const falhaEmissaoSchema = z.object({
+  motivo: z.string(),
+  ocorridaEm: z.string(),
+})
+
+export type FalhaEmissao = z.infer<typeof falhaEmissaoSchema>
 
 const portadorCompletoSchema = z.object({
   portador: portadorSchema,
@@ -69,6 +79,7 @@ const portadorCompletoSchema = z.object({
   cartao: cartaoSchema.nullish().transform((valor) => valor ?? null),
   // null quando o Produto está fora do ar (resposta degradada, com avisos).
   produto: produtoResumoSchema.nullish().transform((valor) => valor ?? null),
+  falhaEmissao: falhaEmissaoSchema.nullish().transform((valor) => valor ?? null),
   emissao: statusEmissaoSchema,
   avisos: z
     .array(z.string())
