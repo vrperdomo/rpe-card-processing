@@ -5,7 +5,7 @@
 # (ver docker-compose.yml). O contexto de build é a raiz do repositório porque o
 # reactor Maven é multi-módulo e precisa do pom.xml agregador e dos poms irmãos.
 
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM eclipse-temurin:25-jdk-jammy AS build
 ARG SERVICE_MODULE
 WORKDIR /workspace
 
@@ -22,7 +22,7 @@ COPY services/${SERVICE_MODULE}/src services/${SERVICE_MODULE}/src
 RUN ./mvnw -q -pl services/${SERVICE_MODULE} -am -DskipTests package \
     && cp services/${SERVICE_MODULE}/target/*.jar /workspace/app.jar
 
-FROM eclipse-temurin:21-jre-jammy AS runtime
+FROM eclipse-temurin:25-jre-jammy AS runtime
 ARG SERVICE_PORT=8080
 ENV SERVICE_PORT=${SERVICE_PORT}
 
