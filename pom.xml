@@ -39,7 +39,7 @@
     <resilience4j.version>2.4.0</resilience4j.version>
     <wiremock.version>3.13.2</wiremock.version>
     <awaitility.version>4.3.0</awaitility.version>
-    <spring-cloud-aws.version>3.4.2</spring-cloud-aws.version>
+    <spring-cloud-aws.version>4.2.0</spring-cloud-aws.version>
     <archunit.version>1.5.0</archunit.version>
     <!-- Fixado em 1.5.9 (ultima da linha 1.x), nao 3.x: a partir da 2.0.0 a biblioteca reescreveu
          a API publica inteira (JsonSchema/JsonSchemaFactory/ValidationMessage -> Schema/
